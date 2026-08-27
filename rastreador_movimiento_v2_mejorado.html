@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rastreador de Movimiento v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
+.panel{background:#252b33;padding:12px;margin-bottom:12px;border-radius:8px}
+button,input,select{margin:4px}
+#stage{position:relative;display:inline-block;border:1px solid #555}
+canvas{position:absolute;left:0;top:0}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #555;padding:4px}
+</style>
+</head>
+<body>
+<h2>Rastreador de Movimiento v2</h2>
+
+<div class="panel">
+<input type="file" id="fileInput" accept="video/*">
+FPS <input type="number" id="fps" value="30">
+<button id="scaleBtn">Definir escala</button>
+Distancia <input type="number" id="realDist" value="1" step="any">
+<select id="unit"><option>m</option><option>cm</option></select>
+<button id="originBtn">Definir origen</button>
+<label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
+<button id="startBtn" disabled>Iniciar registro</button>
+<button id="exportBtn">Exportar</button>
+</div>
+
+<div id="stage"></div>
+
+<p id="status"><strong>Estado:</strong> Cargue un video.</p><p id="modeIndicator"><strong>Modo:</strong> Ninguno</p>
+
+<table>
+<thead><tr><th>Frame</th><th>Tiempo</th><th>X</th><th>Y</th></tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+
+<script>
+let video,canvas,ctx;
+let mode="";
+let scalePts=[];
+let origin=null;
+let scaleFactor=null;
+let unit="m";
+let fps=30;
+let frame=0;
+let data=[];
+let recording=false;
+
+const stage=document.getElementById("stage");
+const status=document.getElementById("status");
+
+fileInput.onchange=e=>{
+ const f=e.target.files[0];
+ if(!f) return;
+ stage.innerHTML="";
+ video=document.createElement("video");
+ video.src=URL.createObjectURL(f);
+ video.muted=true;
+ canvas=document.createElement("canvas");
+ stage.append(video,canvas);
+ video.onloadedmetadata=()=>{
+   canvas.width=video.videoWidth;
+   canvas.height=video.videoHeight;
+   canvas.style.width="100%";
+   canvas.style.height="100%";
+   ctx=canvas.getContext("2d");
+   draw();
+ };
+ canvas.onclick=clickCanvas;
+ canvas.onmousemove=mouseMove;
+};
+
+scaleBtn.onclick=()=>{
+    mode="scale";
+    scalePts=[];
+    status.innerHTML="<strong>Estado:</strong> Seleccione dos puntos para definir la escala.";
+    modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ESCALA";
+    draw();
+};
+originBtn.onclick=()=>{
+    mode="origin";
+    status.innerHTML="<strong>Estado:</strong> Seleccione el origen del sistema de referencia.";
+    modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ORIGEN";
+};
+
+function clickCanvas(e){
+ const r=canvas.getBoundingClientRect();
+ const x=(e.clientX-r.left)/r.width*canvas.width;
+ const y=(e.clientY-r.top)/r.height*canvas.height;
+
+ if(mode==="scale"){
+   scalePts.push({x,y});
+   if(scalePts.length===2){
+     const d=Math.hypot(scalePts[1].x-scalePts[0].x,scalePts[1].y-scalePts[0].y);
+     scaleFactor=parseFloat(realDist.value)/d;
+     unit=document.getElementById("unit").value;
+     mode="";
+     status.innerHTML="<strong>Estado:</strong> Escala definida."; modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+     enableStart();
+   }
+   draw();
+   return;
+ }
+
+ if(mode==="origin"){
+   origin={x,y};
+   mode="";
+   status.innerHTML="<strong>Estado:</strong> Origen definido."; modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+   enableStart();
+   draw();
+   return;
+ }
+
+ if(recording){
+   const xr=((x-origin.x)*scaleFactor);
+   const yr=((origin.y-y)*scaleFactor);
+   data.push({frame,time:frame/fps,xr,yr,xp:x,yp:y});
+   frame++;
+   renderTable();
+   video.currentTime=frame/fps;
+   draw();
+ }
+}
+
+function enableStart(){
+ if(origin && scaleFactor) startBtn.disabled=false;
+}
+
+startBtn.onclick=()=>{
+ fps=parseFloat(document.getElementById("fps").value)||30;
+ frame=0;
+ data=[];
+ recording=true;
+ video.currentTime=0;
+ renderTable();
+ status.textContent="Registrando...";
+};
+
+function draw(){
+ if(!ctx) return;
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ if(origin){
+   if(gridChk.checked && scaleFactor){
+     const step=(unit==="cm"?10:0.1)/scaleFactor;
+     ctx.strokeStyle="rgba(255,255,255,.12)";
+     for(let x=origin.x;x<canvas.width;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+     for(let x=origin.x;x>0;x-=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+     for(let y=origin.y;y<canvas.height;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+     for(let y=origin.y;y>0;y-=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+   }
+
+   ctx.strokeStyle="red";
+   ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(canvas.width,origin.y);ctx.stroke();
+   ctx.strokeStyle="lime";
+   ctx.beginPath();ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,canvas.height);ctx.stroke();
+ }
+
+ if(scalePts.length){
+   ctx.fillStyle="yellow";
+   scalePts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,6.28);ctx.fill();});
+ }
+
+ 
+ctx.strokeStyle="cyan";
+ctx.beginPath();
+data.forEach((p,i)=>{
+  if(i===0) ctx.moveTo(p.xp,p.yp);
+  else ctx.lineTo(p.xp,p.yp);
+});
+ctx.stroke();
+
+data.forEach((p,i)=>{
+   const alpha = Math.max(0.15,(i+1)/data.length);
+   ctx.fillStyle=`rgba(255,255,0,${alpha})`;
+   ctx.beginPath();
+   ctx.arc(p.xp,p.yp,5,0,Math.PI*2);
+   ctx.fill();
+});
+
+if(data.length){
+   const last=data[data.length-1];
+   ctx.fillStyle='rgba(255,0,0,1)';
+   ctx.beginPath();
+   ctx.arc(last.xp,last.yp,7,0,Math.PI*2);
+   ctx.fill();
+}
+
+}
+
+function mouseMove(e){
+ if(!(origin&&scaleFactor)) return;
+ const r=canvas.getBoundingClientRect();
+ const x=(e.clientX-r.left)/r.width*canvas.width;
+ const y=(e.clientY-r.top)/r.height*canvas.height;
+ status.textContent=`Cursor: X=${((x-origin.x)*scaleFactor).toFixed(2)} ${unit}, Y=${((origin.y-y)*scaleFactor).toFixed(2)} ${unit}`;
+}
+
+function renderTable(){
+ tbody.innerHTML=data.map(d=>`<tr><td>${d.frame}</td><td>${d.time.toFixed(3)}</td><td>${d.xr.toFixed(3)}</td><td>${d.yr.toFixed(3)}</td></tr>`).join("");
+}
+
+exportBtn.onclick=()=>{
+ const rows=[["Frame","Tiempo (s)","Pixel X","Pixel Y",`X (${unit})`,`Y (${unit})`],
+...data.map(d=>[d.frame,d.time,d.xp,d.yp,d.xr,d.yr])];
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Datos");
+ XLSX.writeFile(wb,"datos_movimiento_v2.xlsx");
+};
+</script>
+</body>
+</html>
