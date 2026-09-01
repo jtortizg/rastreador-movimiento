@@ -9,8 +9,16 @@
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
 .panel{background:#252b33;padding:12px;margin-bottom:12px;border-radius:8px}
 button,input,select{margin:4px}
-#stage{position:relative;display:inline-block;border:1px solid #555}
-canvas{position:absolute;left:0;top:0}
+#stage{position:relative;width:100%;max-width:100%;border:1px solid #555;background:#000;overflow:hidden}
+#zoomViewport{width:100%;height:min(70vh,70vw);min-height:260px;overflow:auto;background:#000;position:relative;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+#zoomLayer{position:relative;display:block;width:100%;margin:0}
+#zoomLayer video{display:block;width:100%;height:auto;user-select:none;-webkit-user-select:none}
+#zoomLayer canvas{position:absolute;left:0;top:0;width:100%;height:100%;touch-action:manipulation}
+.zoomControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.zoomControls button{min-width:42px}
+.zoomControls input[type=range]{flex:1;min-width:140px}
+#zoomLabel{min-width:58px;text-align:center;font-family:monospace;font-weight:bold}
+@media(max-width:600px){body{padding:10px}.panel{padding:10px}#zoomViewport{height:62vh;min-height:220px}.zoomControls{gap:5px}.zoomControls button{padding:8px 11px}}
 table{width:100%;border-collapse:collapse}
 td,th{border:1px solid #555;padding:4px}
 </style>
@@ -30,7 +38,19 @@ Distancia <input type="number" id="realDist" value="1" step="any">
 <button id="exportBtn">Exportar</button>
 </div>
 
-<div id="stage"></div>
+<div id="stage">
+  <div id="zoomViewport">
+    <div id="zoomLayer"></div>
+  </div>
+</div>
+<div class="zoomControls">
+  <button type="button" id="zoomOut">−</button>
+  <input type="range" id="zoomRange" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+  <button type="button" id="zoomIn">+</button>
+  <button type="button" id="zoomReset">100%</button>
+  <span id="zoomLabel">100%</span>
+</div>
+<p class="hint">En smartphone puedes ampliar el video y desplazarte por la imagen ampliada con el dedo. Las coordenadas siguen correspondiendo al video original.</p>
 
 <p id="status"><strong>Estado:</strong> Cargue un video.</p><p id="modeIndicator"><strong>Modo:</strong> Ninguno</p>
 
@@ -52,28 +72,55 @@ let data=[];
 let recording=false;
 
 const stage=document.getElementById("stage");
+const zoomViewport=document.getElementById("zoomViewport");
+const zoomLayer=document.getElementById("zoomLayer");
+const zoomRange=document.getElementById("zoomRange");
+const zoomLabel=document.getElementById("zoomLabel");
+const zoomOut=document.getElementById("zoomOut");
+const zoomIn=document.getElementById("zoomIn");
+const zoomReset=document.getElementById("zoomReset");
 const status=document.getElementById("status");
+let zoom=1;
 
 fileInput.onchange=e=>{
  const f=e.target.files[0];
  if(!f) return;
- stage.innerHTML="";
+ zoomLayer.innerHTML="";
  video=document.createElement("video");
  video.src=URL.createObjectURL(f);
  video.muted=true;
  canvas=document.createElement("canvas");
- stage.append(video,canvas);
+ zoomLayer.append(video,canvas);
  video.onloadedmetadata=()=>{
    canvas.width=video.videoWidth;
    canvas.height=video.videoHeight;
    canvas.style.width="100%";
    canvas.style.height="100%";
+   zoomLayer.style.aspectRatio=`${video.videoWidth}/${video.videoHeight}`;
    ctx=canvas.getContext("2d");
+   setZoom(1);
    draw();
  };
  canvas.onclick=clickCanvas;
  canvas.onmousemove=mouseMove;
 };
+
+
+function setZoom(value){
+  zoom=Math.max(1,Math.min(4,Number(value)||1));
+  zoomRange.value=zoom;
+  zoomLabel.textContent=`${Math.round(zoom*100)}%`;
+  zoomRange.setAttribute("aria-valuetext",`${Math.round(zoom*100)}%`);
+  if(!video) return;
+  zoomLayer.style.width=`${zoom*100}%`;
+  zoomLayer.style.height="auto";
+  canvas.style.width="100%";
+  canvas.style.height="100%";
+}
+zoomRange.addEventListener("input",()=>setZoom(zoomRange.value));
+zoomIn.addEventListener("click",()=>setZoom(zoom+0.25));
+zoomOut.addEventListener("click",()=>setZoom(zoom-0.25));
+zoomReset.addEventListener("click",()=>setZoom(1));
 
 scaleBtn.onclick=()=>{
     mode="scale";
