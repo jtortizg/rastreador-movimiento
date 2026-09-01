@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v4</title>
+<title>Rastreador de Movimiento v6</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -12,7 +12,7 @@ button,input,select{margin:4px}
 button{cursor:pointer}
 #stage{position:relative;width:100%;max-width:100%;border:1px solid #555;background:#000;overflow:hidden}
 #zoomViewport{width:100%;height:min(70vh,70vw);min-height:260px;overflow:auto;background:#000;position:relative;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
-#zoomLayer{position:relative;display:block;width:100%;margin:0}
+#zoomLayer{position:relative;display:block;width:100%;margin:0 auto}
 #displayCanvas{display:block;width:100%;height:auto;touch-action:auto;user-select:none;-webkit-user-select:none}
 .zoomControls,.videoControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
 .zoomControls button{min-width:42px}
@@ -33,7 +33,7 @@ td,th{border:1px solid #555;padding:4px}
 </style>
 </head>
 <body>
-<h2>Rastreador de Movimiento v4</h2>
+<h2>Rastreador de Movimiento v6</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -45,6 +45,7 @@ Distancia <input type="number" id="realDist" value="1" step="any">
 <label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
 <button id="startBtn" disabled>Iniciar registro</button>
 <button id="exportBtn">Exportar</button>
+<button type="button" id="resetAllBtn">↺ Resetear todo</button>
 </div>
 
 <div class="panel">
@@ -70,12 +71,12 @@ Distancia <input type="number" id="realDist" value="1" step="any">
 </div>
 <div class="zoomControls">
   <button type="button" id="zoomOut">−</button>
-  <input type="range" id="zoomRange" min="1" max="4" step="0.1" value="1" aria-label="Zoom">
+  <input type="range" id="zoomRange" min="0.25" max="4" step="0.25" value="1" aria-label="Zoom">
   <button type="button" id="zoomIn">+</button>
   <button type="button" id="zoomReset">100%</button>
   <span id="zoomLabel">100%</span>
 </div>
-<p class="hint">En smartphone puedes ampliar el video y desplazarte por la imagen ampliada con el dedo. La rotación y el zoom no alteran las coordenadas originales del video.</p>
+<p class="hint">Puedes alejar el video hasta 25% o ampliarlo hasta 400%. En smartphone, cuando esté ampliado, puedes desplazarte por la imagen con el dedo. La rotación cambia la orientación visible del video, pero X permanece horizontal y Y vertical respecto de la pantalla.</p>
 
 <p id="status"><strong>Estado:</strong> Cargue un video.</p>
 <p id="modeIndicator"><strong>Modo:</strong> Ninguno</p>
@@ -110,6 +111,7 @@ const originBtn=document.getElementById("originBtn");
 const gridChk=document.getElementById("gridChk");
 const startBtn=document.getElementById("startBtn");
 const exportBtn=document.getElementById("exportBtn");
+const resetAllBtn=document.getElementById("resetAllBtn");
 const zoomViewport=document.getElementById("zoomViewport");
 const zoomLayer=document.getElementById("zoomLayer");
 const zoomRange=document.getElementById("zoomRange");
@@ -200,16 +202,49 @@ function applyOriginalTransform(){
   if(rotation===270){ ctx.translate(0,w); ctx.rotate(-Math.PI/2); }
 }
 
-function displayToOriginal(dx,dy){
+function displayToOriginalAt(dx,dy,rot){
   const w=video.videoWidth, h=video.videoHeight;
-  if(rotation===0) return {x:dx,y:dy};
-  if(rotation===90) return {x:dy,y:h-dx};
-  if(rotation===180) return {x:w-dx,y:h-dy};
+  if(rot===0) return {x:dx,y:dy};
+  if(rot===90) return {x:dy,y:h-dx};
+  if(rot===180) return {x:w-dx,y:h-dy};
   return {x:w-dy,y:dx};
 }
 
+function originalToDisplayAt(x,y,rot){
+  const w=video.videoWidth, h=video.videoHeight;
+  if(rot===0) return {x,y};
+  if(rot===90) return {x:h-y,y:x};
+  if(rot===180) return {x:w-x,y:h-y};
+  return {x:y,y:w-x};
+}
+
+function rotateStoredGeometry(oldRot,newRot){
+  if(!video) return;
+
+  const convert=p=>{
+    const o=displayToOriginalAt(p.x,p.y,oldRot);
+    return originalToDisplayAt(o.x,o.y,newRot);
+  };
+
+  if(origin) origin=convert(origin);
+  scalePts=scalePts.map(convert);
+
+  data=data.map(d=>{
+    const p=convert({x:d.xp,y:d.yp});
+    return {...d,xp:p.x,yp:p.y};
+  });
+
+  if(origin && scaleFactor){
+    data=data.map(d=>({
+      ...d,
+      xr:(d.xp-origin.x)*scaleFactor,
+      yr:(origin.y-d.yp)*scaleFactor
+    }));
+  }
+}
+
 function setZoom(value){
-  zoom=Math.max(1,Math.min(4,Number(value)||1));
+  zoom=Math.max(0.25,Math.min(4,Number(value)||1));
   zoomRange.value=zoom;
   zoomLabel.textContent=`${Math.round(zoom*100)}%`;
   zoomRange.setAttribute("aria-valuetext",`${Math.round(zoom*100)}%`);
@@ -226,8 +261,12 @@ function updateRotation(){
 }
 rotateBtn.addEventListener("click",()=>{
   if(!video) return;
-  rotation=(rotation+90)%360;
+  const oldRotation=rotation;
+  const newRotation=(rotation+90)%360;
+  rotateStoredGeometry(oldRotation,newRotation);
+  rotation=newRotation;
   updateRotation();
+  renderTable();
 });
 
 function seekToFrame(target){
@@ -272,23 +311,23 @@ scaleBtn.onclick=()=>{
 originBtn.onclick=()=>{
     if(!video) return;
     mode="origin";
-    statusEl.innerHTML="<strong>Estado:</strong> Seleccione el origen del sistema de referencia.";
+    statusEl.innerHTML="<strong>Estado:</strong> Seleccione el origen. X será horizontal y Y vertical respecto de la pantalla.";
     modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ORIGEN";
 };
 
 canvas.addEventListener("click",clickCanvas);
 canvas.addEventListener("mousemove",mouseMove);
 
-function canvasOriginalPoint(e){
+function canvasDisplayPoint(e){
  const r=canvas.getBoundingClientRect();
- const dx=(e.clientX-r.left)/r.width*canvas.width;
- const dy=(e.clientY-r.top)/r.height*canvas.height;
- return displayToOriginal(dx,dy);
+ const x=(e.clientX-r.left)/r.width*canvas.width;
+ const y=(e.clientY-r.top)/r.height*canvas.height;
+ return {x,y};
 }
 
 function clickCanvas(e){
  if(!video) return;
- const {x,y}=canvasOriginalPoint(e);
+ const {x,y}=canvasDisplayPoint(e);
 
  if(mode==="scale"){
    scalePts.push({x,y});
@@ -342,31 +381,36 @@ function draw(){
  if(!ctx || !video || !video.videoWidth) return;
  ctx.setTransform(1,0,0,1,0,0);
  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ // Solo el fotograma del video se transforma.
  ctx.save();
  applyOriginalTransform();
  try{ ctx.drawImage(video,0,0,video.videoWidth,video.videoHeight); }catch(err){}
- drawOverlaysOriginal();
  ctx.restore();
+
+ // Ejes, cuadrícula, escala y puntos se dibujan en el sistema visible:
+ // X horizontal (derecha +), Y vertical (arriba +), sin importar la rotación.
+ drawOverlaysDisplay();
 }
 
-function drawOverlaysOriginal(){
+function drawOverlaysDisplay(){
  if(origin){
    if(gridChk.checked && scaleFactor){
      const step=(unit==="cm"?10:0.1)/scaleFactor;
      if(Number.isFinite(step) && step>1){
        ctx.strokeStyle="rgba(255,255,255,.18)";
        ctx.lineWidth=1;
-       for(let x=origin.x;x<video.videoWidth;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,video.videoHeight);ctx.stroke();}
-       for(let x=origin.x;x>0;x-=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,video.videoHeight);ctx.stroke();}
-       for(let y=origin.y;y<video.videoHeight;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(video.videoWidth,y);ctx.stroke();}
-       for(let y=origin.y;y>0;y-=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(video.videoWidth,y);ctx.stroke();}
+       for(let x=origin.x;x<canvas.width;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+       for(let x=origin.x;x>0;x-=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+       for(let y=origin.y;y<canvas.height;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+       for(let y=origin.y;y>0;y-=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
      }
    }
    ctx.lineWidth=2;
    ctx.strokeStyle="red";
-   ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(video.videoWidth,origin.y);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(canvas.width,origin.y);ctx.stroke();
    ctx.strokeStyle="lime";
-   ctx.beginPath();ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,video.videoHeight);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,canvas.height);ctx.stroke();
  }
 
  if(scalePts.length){
@@ -396,7 +440,7 @@ gridChk.addEventListener("change",draw);
 
 function mouseMove(e){
  if(!(origin&&scaleFactor) || !video) return;
- const {x,y}=canvasOriginalPoint(e);
+ const {x,y}=canvasDisplayPoint(e);
  statusEl.textContent=`Frame ${currentFrame} | X=${((x-origin.x)*scaleFactor).toFixed(2)} ${unit}, Y=${((origin.y-y)*scaleFactor).toFixed(2)} ${unit}`;
 }
 
@@ -404,12 +448,69 @@ function renderTable(){
  tbody.innerHTML=data.map(d=>`<tr><td>${d.frame}</td><td>${d.time.toFixed(3)}</td><td>${d.xr.toFixed(3)}</td><td>${d.yr.toFixed(3)}</td></tr>`).join("");
 }
 
+
+function resetAll(){
+  recording=false;
+  mode="";
+  scalePts=[];
+  origin=null;
+  scaleFactor=null;
+  unit="m";
+  fps=30;
+  data=[];
+  zoom=1;
+  rotation=0;
+  currentFrame=0;
+  totalFrames=0;
+
+  if(video){
+    try{ video.pause(); }catch(err){}
+    video.removeAttribute("src");
+    try{ video.load(); }catch(err){}
+  }
+  video=null;
+
+  if(objectUrl){
+    URL.revokeObjectURL(objectUrl);
+    objectUrl=null;
+  }
+
+  fileInput.value="";
+  fpsInput.value="30";
+  realDist.value="1";
+  unitSelect.value="m";
+  gridChk.checked=true;
+
+  startBtn.disabled=true;
+  seekRange.min="0";
+  seekRange.max="0";
+  seekRange.value="0";
+  frameLabel.textContent="Frame 0";
+  rotationLabel.textContent="0°";
+  modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+  statusEl.innerHTML="<strong>Estado:</strong> Cargue un video.";
+
+  setZoom(1);
+  zoomViewport.scrollLeft=0;
+  zoomViewport.scrollTop=0;
+
+  canvas.width=1;
+  canvas.height=1;
+  zoomLayer.style.aspectRatio="auto";
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  renderTable();
+}
+
+resetAllBtn.addEventListener("click",resetAll);
+
 exportBtn.onclick=()=>{
  const rows=[["Frame","Tiempo (s)","Pixel X","Pixel Y",`X (${unit})`,`Y (${unit})`],
  ...data.map(d=>[d.frame,d.time,d.xp,d.yp,d.xr,d.yr])];
  const wb=XLSX.utils.book_new();
  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Datos");
- XLSX.writeFile(wb,"datos_movimiento_v4.xlsx");
+ XLSX.writeFile(wb,"datos_movimiento_v6.xlsx");
 };
 </script>
 </body>
