@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v8</title>
+<title>Rastreador de Movimiento v8.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -45,100 +45,6 @@ button.recordActive{
 #scalePopup button{padding:8px 12px;font-weight:bold}
 #scalePopupOk{background:#45d483;color:#102218}
 #scalePopupCancel{background:#59636e;color:#fff}
-.dataSelect{
-  display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:8px;
-  margin-top:8px;
-}
-.dataChoice{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:6px;
-  background:#303842;
-  border:1px solid #4d5864;
-  border-radius:8px;
-  padding:9px 8px;
-  min-height:42px;
-  text-align:center;
-}
-.dataChoice input{margin:0}
-.dataChoice span{font-size:.92rem}
-.mobileTools{display:none}
-.desktopControls{display:block}
-#bottomBar{display:none}
-
-@media(max-width:700px){
-  body{padding:8px;overflow-x:hidden}
-  h2{font-size:1.2rem;margin:4px 0 8px}
-  .panel{padding:8px;margin-bottom:8px}
-  .desktopControls{display:none}
-  .mobileTools{display:block}
-  #stage{width:100%}
-  #zoomViewport{
-    height:48vh;
-    min-height:230px;
-    max-height:58vh;
-    border-radius:8px;
-  }
-  .zoomControls{
-    display:grid;
-    grid-template-columns:46px 1fr 46px 58px;
-    gap:5px;
-    align-items:center;
-  }
-  .zoomControls button{min-width:0;padding:10px 5px}
-  #zoomLabel{grid-column:1/-1;text-align:center}
-  .transport{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:6px;
-  }
-  .transport button{
-    width:100%;
-    min-height:48px;
-    font-size:1rem;
-    font-weight:bold;
-  }
-  #seekRange{width:100%;margin:8px 0}
-  .dataSelect{
-    grid-template-columns:1fr 1fr;
-    gap:6px;
-  }
-  .dataChoice{
-    justify-content:flex-start;
-    padding:10px;
-  }
-  #bottomBar{
-    position:sticky;
-    bottom:0;
-    z-index:900;
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:6px;
-    background:rgba(27,31,36,.96);
-    padding:7px;
-    margin:8px -8px -8px;
-    border-top:1px solid #4d5864;
-    backdrop-filter:blur(8px);
-  }
-  #bottomBar button{
-    min-height:50px;
-    font-size:.88rem;
-    padding:6px;
-  }
-  #scalePopup{
-    min-width:min(92vw,330px);
-  }
-  .hint{font-size:.82rem}
-}
-
-@media(max-width:420px){
-  .dataSelect{grid-template-columns:1fr}
-  #bottomBar button{font-size:.8rem}
-}
-
 
 #stage{position:relative;width:100%;max-width:100%;border:1px solid #555;background:#000;overflow:hidden}
 #zoomViewport{width:100%;height:min(70vh,70vw);min-height:260px;overflow:auto;background:#000;position:relative;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
@@ -160,40 +66,168 @@ td,th{border:1px solid #555;padding:4px}
  .frameBtn{flex:1;min-width:120px;font-size:17px;padding:12px 10px}
  #seekRange{order:5;flex-basis:100%;width:100%}
 }
+
+/* ===== v8.1: interfaz responsive ===== */
+.dataSelect{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(130px,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.dataChoice{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  background:#303842;
+  border:1px solid #4d5864;
+  border-radius:8px;
+  padding:9px 10px;
+}
+.dataChoice input{margin:0}
+#mobileActionBar{display:none}
+
+@media(max-width:700px){
+  body{padding:8px;overflow-x:hidden}
+  h2{font-size:1.18rem;margin:4px 0 8px}
+  .panel{padding:8px;margin-bottom:8px}
+
+  /* Panel principal compacto */
+  body > .panel:first-of-type{
+    display:grid;
+    grid-template-columns:1fr 82px;
+    gap:6px;
+    align-items:center;
+  }
+  body > .panel:first-of-type #fileInput{width:100%;min-width:0}
+  body > .panel:first-of-type #fps{
+    width:76px;
+    margin:0;
+  }
+  body > .panel:first-of-type #scaleBtn,
+  body > .panel:first-of-type #originBtn,
+  body > .panel:first-of-type #startBtn{
+    display:none; /* se usan clones grandes en barra inferior */
+  }
+  body > .panel:first-of-type label{
+    grid-column:1/-1;
+    font-size:.9rem;
+  }
+  body > .panel:first-of-type #exportBtn,
+  body > .panel:first-of-type #resetAllBtn{
+    width:100%;
+    min-height:42px;
+  }
+
+  /* Video protagonista */
+  #stage{width:100%}
+  #zoomViewport{
+    height:50vh;
+    min-height:240px;
+    max-height:58vh;
+    border-radius:8px;
+  }
+
+  /* Navegación cómoda */
+  .videoControls{
+    position:static;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    padding:0;
+    background:transparent;
+  }
+  .videoControls .frameBtn{
+    min-width:0;
+    width:100%;
+    min-height:48px;
+    font-size:1rem;
+  }
+  #frameLabel{
+    grid-column:1/-1;
+    text-align:center;
+  }
+  #seekRange{
+    grid-column:1/-1;
+    width:100%;
+    min-width:0;
+    order:initial;
+  }
+  #rotateBtn{
+    width:100%;
+    min-height:44px;
+  }
+  #rotationLabel{align-self:center}
+
+  .zoomControls{
+    display:grid;
+    grid-template-columns:46px 1fr 46px 64px;
+    gap:5px;
+  }
+  .zoomControls button{min-width:0;min-height:42px;padding:6px}
+  .zoomControls input[type=range]{min-width:0;width:100%}
+  #zoomLabel{grid-column:1/-1}
+
+  .dataSelect{grid-template-columns:1fr 1fr;gap:6px}
+  .dataChoice{min-height:42px;padding:9px}
+
+  #mobileActionBar{
+    position:sticky;
+    bottom:0;
+    z-index:900;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    background:rgba(27,31,36,.97);
+    padding:7px;
+    margin:8px -8px -8px;
+    border-top:1px solid #4d5864;
+    backdrop-filter:blur(8px);
+  }
+  #mobileActionBar button{
+    min-height:52px;
+    padding:6px;
+    font-size:.88rem;
+    font-weight:bold;
+  }
+  #scalePopup{
+    min-width:min(92vw,340px);
+    max-width:calc(100vw - 18px);
+  }
+  .hint{font-size:.82rem}
+}
+@media(max-width:420px){
+  .dataSelect{grid-template-columns:1fr}
+  #mobileActionBar button{font-size:.78rem}
+}
+
 </style>
 </head>
 <body>
-<h2>Rastreador de Movimiento v8</h2>
+<h2>Rastreador de Movimiento v8.1</h2>
 
 <div class="panel">
-<div class="desktopControls">
-  <input type="file" id="fileInput" accept="video/*">
-  FPS <input type="number" id="fpsInput" value="30" min="1" step="1">
-  <button id="scaleBtn">Definir escala</button>
-  <button id="originBtn">Definir origen</button>
-  <label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
-  <button id="startBtn" disabled>Iniciar registro</button>
-  <button id="rotateBtn">Rotar 90°</button>
-  <span id="rotationLabel">0°</span>
-  <button id="exportBtn">Exportar</button>
-  <button type="button" id="resetAllBtn">↺ Resetear todo</button>
+<input type="file" id="fileInput" accept="video/*">
+FPS <input type="number" id="fps" value="30" min="1" step="any">
+<button id="scaleBtn">Definir escala</button>
+<button id="originBtn">Definir origen</button>
+<label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
+<button id="startBtn" disabled>Iniciar registro</button>
+<button id="exportBtn">Exportar</button>
+<button type="button" id="resetAllBtn">↺ Resetear todo</button>
 </div>
 
-<div class="mobileTools">
-  <div style="display:grid;grid-template-columns:1fr 90px;gap:6px;align-items:center">
-    <input type="file" id="fileInputMobile" accept="video/*">
-    <input type="number" id="fpsInputMobile" value="30" min="1" step="1" aria-label="FPS">
+<div class="panel">
+  <div class="videoControls">
+    <button type="button" id="prevFrame" class="frameBtn">◀ −1 frame</button>
+    <button type="button" id="nextFrame" class="frameBtn">+1 frame ▶</button>
+    <span id="frameLabel">Frame 0</span>
+    <input type="range" id="seekRange" min="0" max="0" step="1" value="0" aria-label="Buscar frame">
   </div>
-  <div class="transport" style="margin-top:6px">
-    <button type="button" id="prevFrameMobile">◀ −1 frame</button>
-    <button type="button" id="nextFrameMobile">+1 frame ▶</button>
+  <div class="videoControls">
+    <button type="button" id="rotateBtn">↻ Rotar 90°</button>
+    <span id="rotationLabel">0°</span>
   </div>
-  <input type="range" id="seekRangeMobile" min="0" max="0" value="0" step="1" aria-label="Buscar frame">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-    <span id="frameLabelMobile">Frame 0</span>
-    <button type="button" id="rotateBtnMobile">⟳ 90°</button>
-  </div>
-</div>
+  <p class="hint">Navegar por el video no registra posiciones. En computador: barra espaciadora = avanzar 1 frame; flechas ←/→ = retroceder/avanzar 1 frame.</p>
 </div>
 
 <div id="stage">
@@ -226,23 +260,20 @@ td,th{border:1px solid #555;padding:4px}
 
 <div class="panel" id="dataOptionsPanel">
   <strong>Datos a exportar</strong>
-  <div class="hint">Seleccione las variables antes de iniciar el registro.</div>
+  <div class="hint">Seleccione las variables antes de iniciar el registro. El número de frame se incluye automáticamente.</div>
   <div class="dataSelect">
-    <label class="dataChoice"><input type="checkbox" id="collectTime" checked><span>Tiempo (s)</span></label>
-    <label class="dataChoice"><input type="checkbox" id="collectPixelX" checked><span>Posición X (px)</span></label>
-    <label class="dataChoice"><input type="checkbox" id="collectPixelY" checked><span>Posición Y (px)</span></label>
-    <label class="dataChoice"><input type="checkbox" id="collectRealX" checked><span>Posición X (unidad)</span></label>
-    <label class="dataChoice"><input type="checkbox" id="collectRealY" checked><span>Posición Y (unidad)</span></label>
+    <label class="dataChoice"><input type="checkbox" id="collectTime" checked> Tiempo (s)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectPixelX" checked> Posición X (px)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectPixelY" checked> Posición Y (px)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectRealX" checked> Posición X (unidad)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectRealY" checked> Posición Y (unidad)</label>
   </div>
 </div>
 
 <p id="status"><strong>Estado:</strong> Cargue un video.</p>
 <p id="modeIndicator"><strong>Modo:</strong> Ninguno</p>
 
-
-
-
-<div id="bottomBar">
+<div id="mobileActionBar">
   <button type="button" id="scaleBtnMobile">↔ Escala</button>
   <button type="button" id="originBtnMobile">⊕ Origen</button>
   <button type="button" id="startBtnMobile" disabled>● Registrar</button>
@@ -258,26 +289,6 @@ let unit="m";
 let fps=30;
 let data=[];
 let recording=false;
-
-fileInputMobile.addEventListener("change",()=>{
-  if(fileInputMobile.files && fileInputMobile.files[0]){
-    const dt=new DataTransfer();
-    dt.items.add(fileInputMobile.files[0]);
-    fileInput.files=dt.files;
-    fileInput.dispatchEvent(new Event("change"));
-  }
-});
-fileInput.addEventListener("change",()=>{
-  fpsInputMobile.value=fpsInput.value;
-});
-
-fpsInputMobile.addEventListener("input",()=>{
-  fpsInput.value=fpsInputMobile.value;
-});
-fpsInput.addEventListener("input",()=>{
-  fpsInputMobile.value=fpsInput.value;
-});
-
 let zoom=1;
 let rotation=0;
 let currentFrame=0;
@@ -297,22 +308,6 @@ const gridChk=document.getElementById("gridChk");
 const startBtn=document.getElementById("startBtn");
 const exportBtn=document.getElementById("exportBtn");
 const resetAllBtn=document.getElementById("resetAllBtn");
-const fileInputMobile=document.getElementById("fileInputMobile");
-const fpsInputMobile=document.getElementById("fpsInputMobile");
-const prevFrameMobile=document.getElementById("prevFrameMobile");
-const nextFrameMobile=document.getElementById("nextFrameMobile");
-const seekRangeMobile=document.getElementById("seekRangeMobile");
-const frameLabelMobile=document.getElementById("frameLabelMobile");
-const rotateBtnMobile=document.getElementById("rotateBtnMobile");
-const scaleBtnMobile=document.getElementById("scaleBtnMobile");
-const originBtnMobile=document.getElementById("originBtnMobile");
-const startBtnMobile=document.getElementById("startBtnMobile");
-
-const collectTime=document.getElementById("collectTime");
-const collectPixelX=document.getElementById("collectPixelX");
-const collectPixelY=document.getElementById("collectPixelY");
-const collectRealX=document.getElementById("collectRealX");
-const collectRealY=document.getElementById("collectRealY");
 const zoomViewport=document.getElementById("zoomViewport");
 const zoomLayer=document.getElementById("zoomLayer");
 const zoomRange=document.getElementById("zoomRange");
@@ -328,6 +323,16 @@ const rotateBtn=document.getElementById("rotateBtn");
 const rotationLabel=document.getElementById("rotationLabel");
 const statusEl=document.getElementById("status");
 const modeIndicator=document.getElementById("modeIndicator");
+
+const collectTime=document.getElementById("collectTime");
+const collectPixelX=document.getElementById("collectPixelX");
+const collectPixelY=document.getElementById("collectPixelY");
+const collectRealX=document.getElementById("collectRealX");
+const collectRealY=document.getElementById("collectRealY");
+const scaleBtnMobile=document.getElementById("scaleBtnMobile");
+const originBtnMobile=document.getElementById("originBtnMobile");
+const startBtnMobile=document.getElementById("startBtnMobile");
+
 canvas=document.getElementById("displayCanvas");
 ctx=canvas.getContext("2d");
 
@@ -344,6 +349,7 @@ fileInput.onchange=e=>{
  rotation=0;
  currentFrame=0;
  recording=false;
+ [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
  data=[];
  origin=null;
  scaleFactor=null;
@@ -355,7 +361,6 @@ fileInput.onchange=e=>{
    fps=getFPS();
    totalFrames=Math.max(1,Math.floor(video.duration*fps));
    seekRange.max=Math.max(0,totalFrames-1);
-  seekRangeMobile.max=Math.max(0,totalFrames-1);
    seekRange.value=0;
    updateCanvasGeometry();
    setZoom(1);
@@ -375,7 +380,6 @@ fpsInput.addEventListener("change",()=>{
   if(video && Number.isFinite(video.duration)){
     totalFrames=Math.max(1,Math.floor(video.duration*fps));
     seekRange.max=Math.max(0,totalFrames-1);
-  seekRangeMobile.max=Math.max(0,totalFrames-1);
     currentFrame=Math.min(currentFrame,totalFrames-1);
     seekToFrame(currentFrame);
   }
@@ -478,8 +482,6 @@ function seekToFrame(target){
   currentFrame=Math.max(0,Math.min(maxFrame,Math.round(target)));
   seekRange.value=currentFrame;
   frameLabel.textContent=`Frame ${currentFrame}`;
-  frameLabelMobile.textContent=`Frame ${currentFrame}`;
-  seekRangeMobile.value=currentFrame;
   const t=Math.min(video.duration || 0,currentFrame/fps);
   if(Math.abs(video.currentTime-t)>0.000001) video.currentTime=t;
   else draw();
@@ -487,18 +489,6 @@ function seekToFrame(target){
 prevFrame.addEventListener("click",()=>seekToFrame(currentFrame-1));
 nextFrame.addEventListener("click",()=>seekToFrame(currentFrame+1));
 seekRange.addEventListener("input",()=>seekToFrame(Number(seekRange.value)));
-
-
-prevFrameMobile.addEventListener("click",()=>prevFrameBtn.click());
-nextFrameMobile.addEventListener("click",()=>nextFrameBtn.click());
-seekRangeMobile.addEventListener("input",()=>{
-  seekRange.value=seekRangeMobile.value;
-  seekRange.dispatchEvent(new Event("input"));
-});
-rotateBtnMobile.addEventListener("click",()=>rotateBtn.click());
-scaleBtnMobile.addEventListener("click",()=>scaleBtn.click());
-originBtnMobile.addEventListener("click",()=>originBtn.click());
-startBtnMobile.addEventListener("click",()=>startBtn.click());
 
 document.addEventListener("keydown",e=>{
   if(!video) return;
@@ -680,7 +670,7 @@ function enableStart(){
 startBtn.onclick=()=>{
  if(startBtn.disabled) return;
  if(![collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].some(el=>el.checked)){
-   alert("Seleccione al menos una variable para registrar.");
+   alert("Seleccione al menos una variable para exportar.");
    return;
  }
  fps=getFPS();
@@ -756,6 +746,11 @@ function drawOverlaysDisplay(){
 
 gridChk.addEventListener("change",draw);
 
+scaleBtnMobile.addEventListener("click",()=>scaleBtn.click());
+originBtnMobile.addEventListener("click",()=>originBtn.click());
+startBtnMobile.addEventListener("click",()=>startBtn.click());
+
+
 function mouseMove(e){
  if(!(origin&&scaleFactor) || !video) return;
  const {x,y}=canvasDisplayPoint(e);
@@ -792,23 +787,23 @@ function resetAll(){
   }
 
   fileInput.value="";
-  fileInputMobile.value="";
   fpsInput.value="30";
-  fpsInputMobile.value="30";
   realDist.value="1";
   unitSelect.value="m";
   gridChk.checked=true;
-  [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>{el.disabled=false;el.checked=true;});
+
+  [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>{
+    el.disabled=false;
+    el.checked=true;
+  });
 
 
   startBtn.disabled=true;
+  startBtnMobile.disabled=true;
   seekRange.min="0";
   seekRange.max="0";
-  seekRangeMobile.max="0";
   seekRange.value="0";
-  seekRangeMobile.value="0";
   frameLabel.textContent="Frame 0";
-  frameLabelMobile.textContent="Frame 0";
   rotationLabel.textContent="0°";
   modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
   statusEl.innerHTML="<strong>Estado:</strong> Cargue un video.";
@@ -836,27 +831,21 @@ exportBtn.onclick=()=>{
     return;
   }
 
-  const selected=[];
-  selected.push({on:true,key:"frame",label:"Frame"});
-  if(collectTime.checked) selected.push({on:true,key:"time",label:"Tiempo (s)"});
-  if(collectPixelX.checked) selected.push({on:true,key:"xp",label:"Posición X (px)"});
-  if(collectPixelY.checked) selected.push({on:true,key:"yp",label:"Posición Y (px)"});
-  if(collectRealX.checked) selected.push({on:true,key:"xr",label:`Posición X (${unit})`});
-  if(collectRealY.checked) selected.push({on:true,key:"yr",label:`Posición Y (${unit})`});
-
-  if(selected.length===1){
-    alert("Seleccione al menos una variable además del número de frame.");
-    return;
-  }
+  const columns=[{key:"frame",label:"Frame"}];
+  if(collectTime.checked) columns.push({key:"time",label:"Tiempo (s)"});
+  if(collectPixelX.checked) columns.push({key:"xp",label:"Posición X (px)"});
+  if(collectPixelY.checked) columns.push({key:"yp",label:"Posición Y (px)"});
+  if(collectRealX.checked) columns.push({key:"xr",label:`Posición X (${unit})`});
+  if(collectRealY.checked) columns.push({key:"yr",label:`Posición Y (${unit})`});
 
   const rows=[
-    selected.map(c=>c.label),
-    ...data.map(d=>selected.map(c=>d[c.key]))
+    columns.map(c=>c.label),
+    ...data.map(d=>columns.map(c=>d[c.key]))
   ];
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v8.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v8_1.xlsx");
 };
 </script>
 </body>
