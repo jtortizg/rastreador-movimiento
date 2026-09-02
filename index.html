@@ -3,13 +3,143 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v6</title>
+<title>Rastreador de Movimiento v8</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
 .panel{background:#252b33;padding:12px;margin-bottom:12px;border-radius:8px}
 button,input,select{margin:4px}
 button{cursor:pointer}
+button.modeActive{
+  background:#ffd54a;
+  color:#171717;
+  border:2px solid #fff3b0;
+  box-shadow:0 0 0 2px rgba(255,213,74,.25),0 0 14px rgba(255,213,74,.55);
+  font-weight:bold;
+}
+button.recordActive{
+  background:#45d483;
+  color:#102218;
+  border:2px solid #b7ffd4;
+  box-shadow:0 0 0 2px rgba(69,212,131,.22),0 0 14px rgba(69,212,131,.5);
+  font-weight:bold;
+}
+#scalePopup{
+  position:fixed;
+  z-index:1000;
+  display:none;
+  background:#303842;
+  color:#fff;
+  border:1px solid #768391;
+  border-radius:10px;
+  padding:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
+  min-width:225px;
+  max-width:calc(100vw - 24px);
+}
+#scalePopup.visible{display:block}
+#scalePopup .popupTitle{font-weight:bold;margin-bottom:7px}
+#scalePopup .popupRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#scalePopup input{width:105px;padding:7px}
+#scalePopup select{padding:7px}
+#scalePopup button{padding:8px 12px;font-weight:bold}
+#scalePopupOk{background:#45d483;color:#102218}
+#scalePopupCancel{background:#59636e;color:#fff}
+.dataSelect{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.dataChoice{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  background:#303842;
+  border:1px solid #4d5864;
+  border-radius:8px;
+  padding:9px 8px;
+  min-height:42px;
+  text-align:center;
+}
+.dataChoice input{margin:0}
+.dataChoice span{font-size:.92rem}
+.mobileTools{display:none}
+.desktopControls{display:block}
+#bottomBar{display:none}
+
+@media(max-width:700px){
+  body{padding:8px;overflow-x:hidden}
+  h2{font-size:1.2rem;margin:4px 0 8px}
+  .panel{padding:8px;margin-bottom:8px}
+  .desktopControls{display:none}
+  .mobileTools{display:block}
+  #stage{width:100%}
+  #zoomViewport{
+    height:48vh;
+    min-height:230px;
+    max-height:58vh;
+    border-radius:8px;
+  }
+  .zoomControls{
+    display:grid;
+    grid-template-columns:46px 1fr 46px 58px;
+    gap:5px;
+    align-items:center;
+  }
+  .zoomControls button{min-width:0;padding:10px 5px}
+  #zoomLabel{grid-column:1/-1;text-align:center}
+  .transport{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .transport button{
+    width:100%;
+    min-height:48px;
+    font-size:1rem;
+    font-weight:bold;
+  }
+  #seekRange{width:100%;margin:8px 0}
+  .dataSelect{
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+  }
+  .dataChoice{
+    justify-content:flex-start;
+    padding:10px;
+  }
+  #bottomBar{
+    position:sticky;
+    bottom:0;
+    z-index:900;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    background:rgba(27,31,36,.96);
+    padding:7px;
+    margin:8px -8px -8px;
+    border-top:1px solid #4d5864;
+    backdrop-filter:blur(8px);
+  }
+  #bottomBar button{
+    min-height:50px;
+    font-size:.88rem;
+    padding:6px;
+  }
+  #scalePopup{
+    min-width:min(92vw,330px);
+  }
+  .hint{font-size:.82rem}
+}
+
+@media(max-width:420px){
+  .dataSelect{grid-template-columns:1fr}
+  #bottomBar button{font-size:.8rem}
+}
+
+
 #stage{position:relative;width:100%;max-width:100%;border:1px solid #555;background:#000;overflow:hidden}
 #zoomViewport{width:100%;height:min(70vh,70vw);min-height:260px;overflow:auto;background:#000;position:relative;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
 #zoomLayer{position:relative;display:block;width:100%;margin:0 auto}
@@ -33,33 +163,37 @@ td,th{border:1px solid #555;padding:4px}
 </style>
 </head>
 <body>
-<h2>Rastreador de Movimiento v6</h2>
+<h2>Rastreador de Movimiento v8</h2>
 
 <div class="panel">
-<input type="file" id="fileInput" accept="video/*">
-FPS <input type="number" id="fps" value="30" min="1" step="any">
-<button id="scaleBtn">Definir escala</button>
-Distancia <input type="number" id="realDist" value="1" step="any">
-<select id="unit"><option>m</option><option>cm</option></select>
-<button id="originBtn">Definir origen</button>
-<label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
-<button id="startBtn" disabled>Iniciar registro</button>
-<button id="exportBtn">Exportar</button>
-<button type="button" id="resetAllBtn">↺ Resetear todo</button>
+<div class="desktopControls">
+  <input type="file" id="fileInput" accept="video/*">
+  FPS <input type="number" id="fpsInput" value="30" min="1" step="1">
+  <button id="scaleBtn">Definir escala</button>
+  <button id="originBtn">Definir origen</button>
+  <label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
+  <button id="startBtn" disabled>Iniciar registro</button>
+  <button id="rotateBtn">Rotar 90°</button>
+  <span id="rotationLabel">0°</span>
+  <button id="exportBtn">Exportar</button>
+  <button type="button" id="resetAllBtn">↺ Resetear todo</button>
 </div>
 
-<div class="panel">
-  <div class="videoControls">
-    <button type="button" id="prevFrame" class="frameBtn">◀ −1 frame</button>
-    <button type="button" id="nextFrame" class="frameBtn">+1 frame ▶</button>
-    <span id="frameLabel">Frame 0</span>
-    <input type="range" id="seekRange" min="0" max="0" step="1" value="0" aria-label="Buscar frame">
+<div class="mobileTools">
+  <div style="display:grid;grid-template-columns:1fr 90px;gap:6px;align-items:center">
+    <input type="file" id="fileInputMobile" accept="video/*">
+    <input type="number" id="fpsInputMobile" value="30" min="1" step="1" aria-label="FPS">
   </div>
-  <div class="videoControls">
-    <button type="button" id="rotateBtn">↻ Rotar 90°</button>
-    <span id="rotationLabel">0°</span>
+  <div class="transport" style="margin-top:6px">
+    <button type="button" id="prevFrameMobile">◀ −1 frame</button>
+    <button type="button" id="nextFrameMobile">+1 frame ▶</button>
   </div>
-  <p class="hint">Navegar por el video no registra posiciones. En computador: barra espaciadora = avanzar 1 frame; flechas ←/→ = retroceder/avanzar 1 frame.</p>
+  <input type="range" id="seekRangeMobile" min="0" max="0" value="0" step="1" aria-label="Buscar frame">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <span id="frameLabelMobile">Frame 0</span>
+    <button type="button" id="rotateBtnMobile">⟳ 90°</button>
+  </div>
+</div>
 </div>
 
 <div id="stage">
@@ -69,6 +203,17 @@ Distancia <input type="number" id="realDist" value="1" step="any">
     </div>
   </div>
 </div>
+
+<div id="scalePopup" role="dialog" aria-modal="false" aria-label="Ingresar escala">
+  <div class="popupTitle">Distancia entre los dos puntos</div>
+  <div class="popupRow">
+    <input type="number" id="realDist" value="1" min="0" step="any" inputmode="decimal" aria-label="Distancia real">
+    <select id="unit" aria-label="Unidad"><option value="m">m</option><option value="cm">cm</option></select>
+    <button type="button" id="scalePopupOk">OK</button>
+    <button type="button" id="scalePopupCancel">Cancelar</button>
+  </div>
+</div>
+
 <div class="zoomControls">
   <button type="button" id="zoomOut">−</button>
   <input type="range" id="zoomRange" min="0.25" max="4" step="0.25" value="1" aria-label="Zoom">
@@ -78,13 +223,30 @@ Distancia <input type="number" id="realDist" value="1" step="any">
 </div>
 <p class="hint">Puedes alejar el video hasta 25% o ampliarlo hasta 400%. En smartphone, cuando esté ampliado, puedes desplazarte por la imagen con el dedo. La rotación cambia la orientación visible del video, pero X permanece horizontal y Y vertical respecto de la pantalla.</p>
 
+
+<div class="panel" id="dataOptionsPanel">
+  <strong>Datos a exportar</strong>
+  <div class="hint">Seleccione las variables antes de iniciar el registro.</div>
+  <div class="dataSelect">
+    <label class="dataChoice"><input type="checkbox" id="collectTime" checked><span>Tiempo (s)</span></label>
+    <label class="dataChoice"><input type="checkbox" id="collectPixelX" checked><span>Posición X (px)</span></label>
+    <label class="dataChoice"><input type="checkbox" id="collectPixelY" checked><span>Posición Y (px)</span></label>
+    <label class="dataChoice"><input type="checkbox" id="collectRealX" checked><span>Posición X (unidad)</span></label>
+    <label class="dataChoice"><input type="checkbox" id="collectRealY" checked><span>Posición Y (unidad)</span></label>
+  </div>
+</div>
+
 <p id="status"><strong>Estado:</strong> Cargue un video.</p>
 <p id="modeIndicator"><strong>Modo:</strong> Ninguno</p>
 
-<table>
-<thead><tr><th>Frame</th><th>Tiempo</th><th>X</th><th>Y</th></tr></thead>
-<tbody id="tbody"></tbody>
-</table>
+
+
+
+<div id="bottomBar">
+  <button type="button" id="scaleBtnMobile">↔ Escala</button>
+  <button type="button" id="originBtnMobile">⊕ Origen</button>
+  <button type="button" id="startBtnMobile" disabled>● Registrar</button>
+</div>
 
 <script>
 let video,canvas,ctx;
@@ -96,6 +258,26 @@ let unit="m";
 let fps=30;
 let data=[];
 let recording=false;
+
+fileInputMobile.addEventListener("change",()=>{
+  if(fileInputMobile.files && fileInputMobile.files[0]){
+    const dt=new DataTransfer();
+    dt.items.add(fileInputMobile.files[0]);
+    fileInput.files=dt.files;
+    fileInput.dispatchEvent(new Event("change"));
+  }
+});
+fileInput.addEventListener("change",()=>{
+  fpsInputMobile.value=fpsInput.value;
+});
+
+fpsInputMobile.addEventListener("input",()=>{
+  fpsInput.value=fpsInputMobile.value;
+});
+fpsInput.addEventListener("input",()=>{
+  fpsInputMobile.value=fpsInput.value;
+});
+
 let zoom=1;
 let rotation=0;
 let currentFrame=0;
@@ -107,11 +289,30 @@ const fpsInput=document.getElementById("fps");
 const scaleBtn=document.getElementById("scaleBtn");
 const realDist=document.getElementById("realDist");
 const unitSelect=document.getElementById("unit");
+const scalePopup=document.getElementById("scalePopup");
+const scalePopupOk=document.getElementById("scalePopupOk");
+const scalePopupCancel=document.getElementById("scalePopupCancel");
 const originBtn=document.getElementById("originBtn");
 const gridChk=document.getElementById("gridChk");
 const startBtn=document.getElementById("startBtn");
 const exportBtn=document.getElementById("exportBtn");
 const resetAllBtn=document.getElementById("resetAllBtn");
+const fileInputMobile=document.getElementById("fileInputMobile");
+const fpsInputMobile=document.getElementById("fpsInputMobile");
+const prevFrameMobile=document.getElementById("prevFrameMobile");
+const nextFrameMobile=document.getElementById("nextFrameMobile");
+const seekRangeMobile=document.getElementById("seekRangeMobile");
+const frameLabelMobile=document.getElementById("frameLabelMobile");
+const rotateBtnMobile=document.getElementById("rotateBtnMobile");
+const scaleBtnMobile=document.getElementById("scaleBtnMobile");
+const originBtnMobile=document.getElementById("originBtnMobile");
+const startBtnMobile=document.getElementById("startBtnMobile");
+
+const collectTime=document.getElementById("collectTime");
+const collectPixelX=document.getElementById("collectPixelX");
+const collectPixelY=document.getElementById("collectPixelY");
+const collectRealX=document.getElementById("collectRealX");
+const collectRealY=document.getElementById("collectRealY");
 const zoomViewport=document.getElementById("zoomViewport");
 const zoomLayer=document.getElementById("zoomLayer");
 const zoomRange=document.getElementById("zoomRange");
@@ -127,7 +328,6 @@ const rotateBtn=document.getElementById("rotateBtn");
 const rotationLabel=document.getElementById("rotationLabel");
 const statusEl=document.getElementById("status");
 const modeIndicator=document.getElementById("modeIndicator");
-const tbody=document.getElementById("tbody");
 canvas=document.getElementById("displayCanvas");
 ctx=canvas.getContext("2d");
 
@@ -155,6 +355,7 @@ fileInput.onchange=e=>{
    fps=getFPS();
    totalFrames=Math.max(1,Math.floor(video.duration*fps));
    seekRange.max=Math.max(0,totalFrames-1);
+  seekRangeMobile.max=Math.max(0,totalFrames-1);
    seekRange.value=0;
    updateCanvasGeometry();
    setZoom(1);
@@ -174,6 +375,7 @@ fpsInput.addEventListener("change",()=>{
   if(video && Number.isFinite(video.duration)){
     totalFrames=Math.max(1,Math.floor(video.duration*fps));
     seekRange.max=Math.max(0,totalFrames-1);
+  seekRangeMobile.max=Math.max(0,totalFrames-1);
     currentFrame=Math.min(currentFrame,totalFrames-1);
     seekToFrame(currentFrame);
   }
@@ -276,6 +478,8 @@ function seekToFrame(target){
   currentFrame=Math.max(0,Math.min(maxFrame,Math.round(target)));
   seekRange.value=currentFrame;
   frameLabel.textContent=`Frame ${currentFrame}`;
+  frameLabelMobile.textContent=`Frame ${currentFrame}`;
+  seekRangeMobile.value=currentFrame;
   const t=Math.min(video.duration || 0,currentFrame/fps);
   if(Math.abs(video.currentTime-t)>0.000001) video.currentTime=t;
   else draw();
@@ -283,6 +487,18 @@ function seekToFrame(target){
 prevFrame.addEventListener("click",()=>seekToFrame(currentFrame-1));
 nextFrame.addEventListener("click",()=>seekToFrame(currentFrame+1));
 seekRange.addEventListener("input",()=>seekToFrame(Number(seekRange.value)));
+
+
+prevFrameMobile.addEventListener("click",()=>prevFrameBtn.click());
+nextFrameMobile.addEventListener("click",()=>nextFrameBtn.click());
+seekRangeMobile.addEventListener("input",()=>{
+  seekRange.value=seekRangeMobile.value;
+  seekRange.dispatchEvent(new Event("input"));
+});
+rotateBtnMobile.addEventListener("click",()=>rotateBtn.click());
+scaleBtnMobile.addEventListener("click",()=>scaleBtn.click());
+originBtnMobile.addEventListener("click",()=>originBtn.click());
+startBtnMobile.addEventListener("click",()=>startBtn.click());
 
 document.addEventListener("keydown",e=>{
   if(!video) return;
@@ -300,19 +516,65 @@ document.addEventListener("keydown",e=>{
   }
 });
 
+
+function setButtonStates(){
+  const scaleActive=mode==="scale";
+  const originActive=mode==="origin";
+  scaleBtn.classList.toggle("modeActive",scaleActive);
+  originBtn.classList.toggle("modeActive",originActive);
+  startBtn.classList.toggle("recordActive",recording);
+  startBtn.textContent=recording ? "Registro activo" : "Iniciar registro";
+
+  scaleBtnMobile.classList.toggle("modeActive",scaleActive);
+  originBtnMobile.classList.toggle("modeActive",originActive);
+  startBtnMobile.classList.toggle("recordActive",recording);
+  startBtnMobile.textContent=recording ? "● Activo" : "● Registrar";
+}
+
+function hideScalePopup(){
+  scalePopup.classList.remove("visible");
+}
+
+function positionScalePopup(clientX,clientY){
+  scalePopup.classList.add("visible");
+  const pad=12;
+  const rect=scalePopup.getBoundingClientRect();
+  let left=clientX+14;
+  let top=clientY+14;
+  if(left+rect.width>window.innerWidth-pad) left=Math.max(pad,clientX-rect.width-14);
+  if(top+rect.height>window.innerHeight-pad) top=Math.max(pad,clientY-rect.height-14);
+  scalePopup.style.left=`${left}px`;
+  scalePopup.style.top=`${top}px`;
+  requestAnimationFrame(()=>realDist.focus());
+}
+
+function cancelModes(){
+  mode="";
+  hideScalePopup();
+  setButtonStates();
+}
+
 scaleBtn.onclick=()=>{
     if(!video) return;
+    recording=false;
     mode="scale";
     scalePts=[];
+    hideScalePopup();
+    setButtonStates();
     statusEl.innerHTML="<strong>Estado:</strong> Seleccione dos puntos para definir la escala.";
     modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ESCALA";
     draw();
 };
 originBtn.onclick=()=>{
     if(!video) return;
+    recording=false;
     mode="origin";
+    scalePts=[];
+    hideScalePopup();
+    setButtonStates();
     statusEl.innerHTML="<strong>Estado:</strong> Seleccione el origen. X será horizontal y Y vertical respecto de la pantalla.";
     modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ORIGEN";
+    draw();
 };
 
 canvas.addEventListener("click",clickCanvas);
@@ -330,16 +592,18 @@ function clickCanvas(e){
  const {x,y}=canvasDisplayPoint(e);
 
  if(mode==="scale"){
+   if(scalePopup.classList.contains("visible")) return;
    scalePts.push({x,y});
    if(scalePts.length===2){
      const d=Math.hypot(scalePts[1].x-scalePts[0].x,scalePts[1].y-scalePts[0].y);
-     if(d<=0) return;
-     scaleFactor=parseFloat(realDist.value)/d;
-     unit=unitSelect.value;
-     mode="";
-     statusEl.innerHTML="<strong>Estado:</strong> Escala definida.";
-     modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
-     enableStart();
+     if(d<=0){
+       scalePts=[];
+       statusEl.innerHTML="<strong>Estado:</strong> Los puntos deben ser distintos. Seleccione nuevamente dos puntos.";
+       draw();
+       return;
+     }
+     statusEl.innerHTML="<strong>Estado:</strong> Ingrese la distancia real entre los dos puntos.";
+     positionScalePopup(e.clientX,e.clientY);
    }
    draw();
    return;
@@ -350,6 +614,7 @@ function clickCanvas(e){
    mode="";
    statusEl.innerHTML="<strong>Estado:</strong> Origen definido.";
    modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+   setButtonStates();
    enableStart();
    draw();
    return;
@@ -365,15 +630,68 @@ function clickCanvas(e){
  }
 }
 
+
+scalePopupOk.addEventListener("click",()=>{
+  if(mode!=="scale" || scalePts.length!==2) return;
+  const value=Number(realDist.value);
+  if(!Number.isFinite(value) || value<=0){
+    statusEl.innerHTML="<strong>Estado:</strong> Ingrese una distancia mayor que 0.";
+    realDist.focus();
+    return;
+  }
+  const d=Math.hypot(scalePts[1].x-scalePts[0].x,scalePts[1].y-scalePts[0].y);
+  scaleFactor=value/d;
+  unit=unitSelect.value;
+  mode="";
+  hideScalePopup();
+  setButtonStates();
+  statusEl.innerHTML=`<strong>Estado:</strong> Escala definida: ${value} ${unit}.`;
+  modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+  enableStart();
+  draw();
+});
+
+scalePopupCancel.addEventListener("click",()=>{
+  scalePts=[];
+  mode="";
+  hideScalePopup();
+  setButtonStates();
+  statusEl.innerHTML="<strong>Estado:</strong> Definición de escala cancelada.";
+  modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+  draw();
+});
+
+realDist.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    e.preventDefault();
+    scalePopupOk.click();
+  }else if(e.key==="Escape"){
+    e.preventDefault();
+    scalePopupCancel.click();
+  }
+});
+
 function enableStart(){
- if(origin && scaleFactor) startBtn.disabled=false;
+  const ready=!!(video && origin && scaleFactor);
+  startBtn.disabled=!ready;
+  startBtnMobile.disabled=!ready;
 }
 
 startBtn.onclick=()=>{
+ if(startBtn.disabled) return;
+ if(![collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].some(el=>el.checked)){
+   alert("Seleccione al menos una variable para registrar.");
+   return;
+ }
  fps=getFPS();
+ mode="";
+ hideScalePopup();
  data=[];
  recording=true;
+ [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=true);
+ setButtonStates();
  renderTable();
+ modeIndicator.innerHTML="<strong>Modo:</strong> REGISTRO ACTIVO";
  statusEl.innerHTML=`<strong>Estado:</strong> Registrando desde el frame ${currentFrame}. Use los controles para buscar el frame y haga clic sobre el objeto para registrar.`;
 };
 
@@ -444,9 +762,7 @@ function mouseMove(e){
  statusEl.textContent=`Frame ${currentFrame} | X=${((x-origin.x)*scaleFactor).toFixed(2)} ${unit}, Y=${((origin.y-y)*scaleFactor).toFixed(2)} ${unit}`;
 }
 
-function renderTable(){
- tbody.innerHTML=data.map(d=>`<tr><td>${d.frame}</td><td>${d.time.toFixed(3)}</td><td>${d.xr.toFixed(3)}</td><td>${d.yr.toFixed(3)}</td></tr>`).join("");
-}
+function renderTable(){}
 
 
 function resetAll(){
@@ -476,19 +792,28 @@ function resetAll(){
   }
 
   fileInput.value="";
+  fileInputMobile.value="";
   fpsInput.value="30";
+  fpsInputMobile.value="30";
   realDist.value="1";
   unitSelect.value="m";
   gridChk.checked=true;
+  [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>{el.disabled=false;el.checked=true;});
+
 
   startBtn.disabled=true;
   seekRange.min="0";
   seekRange.max="0";
+  seekRangeMobile.max="0";
   seekRange.value="0";
+  seekRangeMobile.value="0";
   frameLabel.textContent="Frame 0";
+  frameLabelMobile.textContent="Frame 0";
   rotationLabel.textContent="0°";
   modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
   statusEl.innerHTML="<strong>Estado:</strong> Cargue un video.";
+  hideScalePopup();
+  setButtonStates();
 
   setZoom(1);
   zoomViewport.scrollLeft=0;
@@ -506,11 +831,32 @@ function resetAll(){
 resetAllBtn.addEventListener("click",resetAll);
 
 exportBtn.onclick=()=>{
- const rows=[["Frame","Tiempo (s)","Pixel X","Pixel Y",`X (${unit})`,`Y (${unit})`],
- ...data.map(d=>[d.frame,d.time,d.xp,d.yp,d.xr,d.yr])];
- const wb=XLSX.utils.book_new();
- XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),"Datos");
- XLSX.writeFile(wb,"datos_movimiento_v6.xlsx");
+  if(!data.length){
+    alert("No hay datos registrados para exportar.");
+    return;
+  }
+
+  const selected=[];
+  selected.push({on:true,key:"frame",label:"Frame"});
+  if(collectTime.checked) selected.push({on:true,key:"time",label:"Tiempo (s)"});
+  if(collectPixelX.checked) selected.push({on:true,key:"xp",label:"Posición X (px)"});
+  if(collectPixelY.checked) selected.push({on:true,key:"yp",label:"Posición Y (px)"});
+  if(collectRealX.checked) selected.push({on:true,key:"xr",label:`Posición X (${unit})`});
+  if(collectRealY.checked) selected.push({on:true,key:"yr",label:`Posición Y (${unit})`});
+
+  if(selected.length===1){
+    alert("Seleccione al menos una variable además del número de frame.");
+    return;
+  }
+
+  const rows=[
+    selected.map(c=>c.label),
+    ...data.map(d=>selected.map(c=>d[c.key]))
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Datos");
+  XLSX.writeFile(wb,"datos_movimiento_v8.xlsx");
 };
 </script>
 </body>
