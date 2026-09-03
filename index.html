@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v8.1</title>
+<title>Rastreador de Movimiento v8.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -200,10 +200,174 @@ td,th{border:1px solid #555;padding:4px}
   #mobileActionBar button{font-size:.78rem}
 }
 
+
+/* v8.2 — Perfil estudiantil Universidad Central de Chile */
+:root{
+ --uc-oxford:#002147; --uc-classic:#004680; --uc-silver:#90ABC4;
+ --uc-gray:#818F9F; --uc-wizard:#0072E5; --uc-peach:#F5A680;
+ --uc-violet:#AF6BFF; --uc-mint:#00DB9D; --uc-white:#FFFFFF;
+ --uc-soft:#F3F6F9; --uc-text:#17283B;
+}
+body{background:var(--uc-soft);color:var(--uc-text)}
+h1,h2,h3{color:var(--uc-oxford)}
+.panel{background:var(--uc-white);color:var(--uc-text);border:1px solid var(--uc-silver);box-shadow:0 2px 8px rgba(0,33,71,.08)}
+.hint{color:#53677A}
+#stage,#zoomViewport{background:var(--uc-oxford);border-color:var(--uc-classic)}
+button{background:var(--uc-classic);color:var(--uc-white);border:1px solid var(--uc-classic);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .05s ease}
+button:hover:not(:disabled){background:var(--uc-wizard);border-color:var(--uc-wizard)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{background:var(--uc-gray);border-color:var(--uc-gray);color:#EDF1F5;opacity:.68}
+#scaleBtn,#scaleBtnMobile,#originBtn,#originBtnMobile,#startBtn:not(:disabled),#startBtnMobile:not(:disabled){background:var(--uc-classic);border-color:var(--uc-classic)}
+button.modeActive#scaleBtn,button.modeActive#scaleBtnMobile{background:var(--uc-violet);border-color:var(--uc-violet);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(175,107,255,.22),0 4px 14px rgba(0,33,71,.18)}
+button.modeActive#originBtn,button.modeActive#originBtnMobile{background:var(--uc-peach);border-color:var(--uc-peach);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(245,166,128,.25),0 4px 14px rgba(0,33,71,.18)}
+button.recordActive#startBtn,button.recordActive#startBtnMobile{background:var(--uc-mint);border-color:var(--uc-mint);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(0,219,157,.22),0 4px 14px rgba(0,33,71,.18)}
+#exportBtn{background:var(--uc-wizard);border-color:var(--uc-wizard)}
+#exportBtn:hover:not(:disabled){background:var(--uc-classic);border-color:var(--uc-classic)}
+#resetAllBtn{background:var(--uc-gray);border-color:var(--uc-gray)}
+#resetAllBtn:hover:not(:disabled){background:var(--uc-oxford);border-color:var(--uc-oxford)}
+input,select{border-color:var(--uc-silver);background:var(--uc-white);color:var(--uc-text)}
+input:focus,select:focus{outline:2px solid var(--uc-wizard);outline-offset:1px}
+input[type="range"],input[type="checkbox"]{accent-color:var(--uc-wizard)}
+.dataChoice{background:#F8FAFC;color:var(--uc-text);border-color:var(--uc-silver)}
+.dataChoice:hover{border-color:var(--uc-wizard)}
+#scalePopup{background:var(--uc-oxford);color:var(--uc-white);border:1px solid var(--uc-silver);box-shadow:0 10px 30px rgba(0,33,71,.35)}
+#scalePopupOk{background:var(--uc-mint);border-color:var(--uc-mint);color:var(--uc-oxford)}
+#scalePopupCancel{background:var(--uc-gray);border-color:var(--uc-gray);color:var(--uc-white)}
+#status,#modeIndicator{color:var(--uc-text)}
+#status strong,#modeIndicator strong{color:var(--uc-classic)}
+@media(max-width:700px){
+ #mobileActionBar{background:rgba(0,33,71,.97);border-top:1px solid var(--uc-silver);box-shadow:0 -5px 18px rgba(0,33,71,.18)}
+}
+
+
+/* ===== v8.3 — Modo nocturno UC ===== */
+#themeToggleBtn{
+  background:var(--uc-oxford);
+  border-color:var(--uc-oxford);
+}
+#themeToggleBtn:hover:not(:disabled){
+  background:var(--uc-classic);
+  border-color:var(--uc-classic);
+}
+
+body.darkMode{
+  --uc-soft:#0B1624;
+  --uc-text:#EAF1F7;
+  background:#08111C;
+  color:var(--uc-text);
+}
+body.darkMode h1,
+body.darkMode h2,
+body.darkMode h3{
+  color:#EAF3FF;
+}
+body.darkMode .panel{
+  background:#102033;
+  color:#EAF1F7;
+  border-color:#27435F;
+  box-shadow:0 3px 14px rgba(0,0,0,.35);
+}
+body.darkMode .hint{
+  color:#B7C6D6;
+}
+body.darkMode #stage,
+body.darkMode #zoomViewport{
+  background:#03080E;
+  border-color:var(--uc-wizard);
+}
+body.darkMode input,
+body.darkMode select{
+  background:#0B1725;
+  color:#F4F8FC;
+  border-color:#526E89;
+}
+body.darkMode input::file-selector-button{
+  background:var(--uc-classic);
+  color:#fff;
+  border:1px solid var(--uc-classic);
+  border-radius:6px;
+  padding:6px 9px;
+}
+body.darkMode .dataChoice{
+  background:#13273B;
+  color:#EAF1F7;
+  border-color:#36536F;
+}
+body.darkMode .dataChoice:hover{
+  border-color:var(--uc-wizard);
+}
+body.darkMode #status,
+body.darkMode #modeIndicator{
+  color:#EAF1F7;
+}
+body.darkMode #status strong,
+body.darkMode #modeIndicator strong{
+  color:#8EC5FF;
+}
+body.darkMode #scalePopup{
+  background:#071421;
+  color:#fff;
+  border-color:#456783;
+}
+body.darkMode #themeToggleBtn{
+  background:var(--uc-silver);
+  border-color:var(--uc-silver);
+  color:var(--uc-oxford);
+}
+body.darkMode #themeToggleBtn:hover:not(:disabled){
+  background:#B4C8DA;
+  border-color:#B4C8DA;
+}
+body.darkMode button:disabled{
+  background:#465665;
+  border-color:#465665;
+  color:#AAB7C4;
+}
+body.darkMode #resetAllBtn{
+  background:#53687D;
+  border-color:#53687D;
+}
+body.darkMode #resetAllBtn:hover:not(:disabled){
+  background:#6C8298;
+  border-color:#6C8298;
+}
+body.darkMode #exportBtn{
+  background:var(--uc-wizard);
+  border-color:var(--uc-wizard);
+}
+body.darkMode #mobileActionBar{
+  background:rgba(3,12,22,.98);
+  border-top-color:#36536F;
+}
+body.darkMode .zoomControls,
+body.darkMode .videoControls{
+  color:#EAF1F7;
+}
+
+/* Mantener estados activos institucionales también de noche */
+body.darkMode button.modeActive#scaleBtn,
+body.darkMode button.modeActive#scaleBtnMobile{
+  background:var(--uc-violet);
+  border-color:var(--uc-violet);
+  color:#1A0E2A;
+}
+body.darkMode button.modeActive#originBtn,
+body.darkMode button.modeActive#originBtnMobile{
+  background:var(--uc-peach);
+  border-color:var(--uc-peach);
+  color:#2D160C;
+}
+body.darkMode button.recordActive#startBtn,
+body.darkMode button.recordActive#startBtnMobile{
+  background:var(--uc-mint);
+  border-color:var(--uc-mint);
+  color:#04291E;
+}
+
 </style>
 </head>
 <body>
-<h2>Rastreador de Movimiento v8.1</h2>
+<h2>Rastreador de Movimiento v8.3</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -214,6 +378,7 @@ FPS <input type="number" id="fps" value="30" min="1" step="any">
 <button id="startBtn" disabled>Iniciar registro</button>
 <button id="exportBtn">Exportar</button>
 <button type="button" id="resetAllBtn">↺ Resetear todo</button>
+<button type="button" id="themeToggleBtn" aria-pressed="false">🌙 Modo nocturno</button>
 </div>
 
 <div class="panel">
@@ -308,6 +473,7 @@ const gridChk=document.getElementById("gridChk");
 const startBtn=document.getElementById("startBtn");
 const exportBtn=document.getElementById("exportBtn");
 const resetAllBtn=document.getElementById("resetAllBtn");
+const themeToggleBtn=document.getElementById("themeToggleBtn");
 const zoomViewport=document.getElementById("zoomViewport");
 const zoomLayer=document.getElementById("zoomLayer");
 const zoomRange=document.getElementById("zoomRange");
@@ -746,6 +912,25 @@ function drawOverlaysDisplay(){
 
 gridChk.addEventListener("change",draw);
 
+
+function applyTheme(isDark){
+  document.body.classList.toggle("darkMode",isDark);
+  themeToggleBtn.setAttribute("aria-pressed",isDark ? "true" : "false");
+  themeToggleBtn.textContent=isDark ? "☀️ Modo claro" : "🌙 Modo nocturno";
+  try{
+    localStorage.setItem("rastreadorTema",isDark ? "dark" : "light");
+  }catch(e){}
+}
+
+themeToggleBtn.addEventListener("click",()=>{
+  applyTheme(!document.body.classList.contains("darkMode"));
+});
+
+try{
+  const savedTheme=localStorage.getItem("rastreadorTema");
+  if(savedTheme==="dark") applyTheme(true);
+}catch(e){}
+
 scaleBtnMobile.addEventListener("click",()=>scaleBtn.click());
 originBtnMobile.addEventListener("click",()=>originBtn.click());
 startBtnMobile.addEventListener("click",()=>startBtn.click());
@@ -845,7 +1030,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v8_1.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v8_3.xlsx");
 };
 </script>
 </body>
