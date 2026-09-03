@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rastreador de Movimiento v8.3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
+.panel{background:#252b33;padding:12px;margin-bottom:12px;border-radius:8px}
+button,input,select{margin:4px}
+button{cursor:pointer}
+button.modeActive{
+  background:#ffd54a;
+  color:#171717;
+  border:2px solid #fff3b0;
+  box-shadow:0 0 0 2px rgba(255,213,74,.25),0 0 14px rgba(255,213,74,.55);
+  font-weight:bold;
+}
+button.recordActive{
+  background:#45d483;
+  color:#102218;
+  border:2px solid #b7ffd4;
+  box-shadow:0 0 0 2px rgba(69,212,131,.22),0 0 14px rgba(69,212,131,.5);
+  font-weight:bold;
+}
+#scalePopup{
+  position:fixed;
+  z-index:1000;
+  display:none;
+  background:#303842;
+  color:#fff;
+  border:1px solid #768391;
+  border-radius:10px;
+  padding:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
+  min-width:225px;
+  max-width:calc(100vw - 24px);
+}
+#scalePopup.visible{display:block}
+#scalePopup .popupTitle{font-weight:bold;margin-bottom:7px}
+#scalePopup .popupRow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#scalePopup input{width:105px;padding:7px}
+#scalePopup select{padding:7px}
+#scalePopup button{padding:8px 12px;font-weight:bold}
+#scalePopupOk{background:#45d483;color:#102218}
+#scalePopupCancel{background:#59636e;color:#fff}
+
+#stage{position:relative;width:100%;max-width:100%;border:1px solid #555;background:#000;overflow:hidden}
+#zoomViewport{width:100%;height:min(70vh,70vw);min-height:260px;overflow:auto;background:#000;position:relative;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+#zoomLayer{position:relative;display:block;width:100%;margin:0 auto}
+#displayCanvas{display:block;width:100%;height:auto;touch-action:auto;user-select:none;-webkit-user-select:none}
+.zoomControls,.videoControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+.zoomControls button{min-width:42px}
+.zoomControls input[type=range],.videoControls input[type=range]{flex:1;min-width:140px}
+#zoomLabel,#frameLabel,#rotationLabel{min-width:72px;text-align:center;font-family:monospace;font-weight:bold}
+.frameBtn{font-size:16px;font-weight:bold;padding:9px 14px;min-width:110px}
+#rotateBtn{font-weight:bold;padding:9px 14px}
+.hint{color:#cbd5df;font-size:.92rem}
+table{width:100%;border-collapse:collapse}
+td,th{border:1px solid #555;padding:4px}
+@media(max-width:600px){
+ body{padding:10px}.panel{padding:10px}#zoomViewport{height:62vh;min-height:220px}
+ .zoomControls,.videoControls{gap:5px}.zoomControls button{padding:8px 11px}
+ .videoControls{position:sticky;bottom:0;z-index:20;background:#252b33;padding:8px;border-radius:8px}
+ .frameBtn{flex:1;min-width:120px;font-size:17px;padding:12px 10px}
+ #seekRange{order:5;flex-basis:100%;width:100%}
+}
+
+/* ===== v8.1: interfaz responsive ===== */
+.dataSelect{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(130px,1fr));
+  gap:8px;
+  margin-top:8px;
+}
+.dataChoice{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  background:#303842;
+  border:1px solid #4d5864;
+  border-radius:8px;
+  padding:9px 10px;
+}
+.dataChoice input{margin:0}
+#mobileActionBar{display:none}
+
+@media(max-width:700px){
+  body{padding:8px;overflow-x:hidden}
+  h2{font-size:1.18rem;margin:4px 0 8px}
+  .panel{padding:8px;margin-bottom:8px}
+
+  /* Panel principal compacto */
+  body > .panel:first-of-type{
+    display:grid;
+    grid-template-columns:1fr 82px;
+    gap:6px;
+    align-items:center;
+  }
+  body > .panel:first-of-type #fileInput{width:100%;min-width:0}
+  body > .panel:first-of-type #fps{
+    width:76px;
+    margin:0;
+  }
+  body > .panel:first-of-type #scaleBtn,
+  body > .panel:first-of-type #originBtn,
+  body > .panel:first-of-type #startBtn{
+    display:none; /* se usan clones grandes en barra inferior */
+  }
+  body > .panel:first-of-type label{
+    grid-column:1/-1;
+    font-size:.9rem;
+  }
+  body > .panel:first-of-type #exportBtn,
+  body > .panel:first-of-type #resetAllBtn{
+    width:100%;
+    min-height:42px;
+  }
+
+  /* Video protagonista */
+  #stage{width:100%}
+  #zoomViewport{
+    height:50vh;
+    min-height:240px;
+    max-height:58vh;
+    border-radius:8px;
+  }
+
+  /* Navegación cómoda */
+  .videoControls{
+    position:static;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    padding:0;
+    background:transparent;
+  }
+  .videoControls .frameBtn{
+    min-width:0;
+    width:100%;
+    min-height:48px;
+    font-size:1rem;
+  }
+  #frameLabel{
+    grid-column:1/-1;
+    text-align:center;
+  }
+  #seekRange{
+    grid-column:1/-1;
+    width:100%;
+    min-width:0;
+    order:initial;
+  }
+  #rotateBtn{
+    width:100%;
+    min-height:44px;
+  }
+  #rotationLabel{align-self:center}
+
+  .zoomControls{
+    display:grid;
+    grid-template-columns:46px 1fr 46px 64px;
+    gap:5px;
+  }
+  .zoomControls button{min-width:0;min-height:42px;padding:6px}
+  .zoomControls input[type=range]{min-width:0;width:100%}
+  #zoomLabel{grid-column:1/-1}
+
+  .dataSelect{grid-template-columns:1fr 1fr;gap:6px}
+  .dataChoice{min-height:42px;padding:9px}
+
+  #mobileActionBar{
+    position:sticky;
+    bottom:0;
+    z-index:900;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:6px;
+    background:rgba(27,31,36,.97);
+    padding:7px;
+    margin:8px -8px -8px;
+    border-top:1px solid #4d5864;
+    backdrop-filter:blur(8px);
+  }
+  #mobileActionBar button{
+    min-height:52px;
+    padding:6px;
+    font-size:.88rem;
+    font-weight:bold;
+  }
+  #scalePopup{
+    min-width:min(92vw,340px);
+    max-width:calc(100vw - 18px);
+  }
+  .hint{font-size:.82rem}
+}
+@media(max-width:420px){
+  .dataSelect{grid-template-columns:1fr}
+  #mobileActionBar button{font-size:.78rem}
+}
+
+
+/* v8.2 — Perfil estudiantil Universidad Central de Chile */
+:root{
+ --uc-oxford:#002147; --uc-classic:#004680; --uc-silver:#90ABC4;
+ --uc-gray:#818F9F; --uc-wizard:#0072E5; --uc-peach:#F5A680;
+ --uc-violet:#AF6BFF; --uc-mint:#00DB9D; --uc-white:#FFFFFF;
+ --uc-soft:#F3F6F9; --uc-text:#17283B;
+}
+body{background:var(--uc-soft);color:var(--uc-text)}
+h1,h2,h3{color:var(--uc-oxford)}
+.panel{background:var(--uc-white);color:var(--uc-text);border:1px solid var(--uc-silver);box-shadow:0 2px 8px rgba(0,33,71,.08)}
+.hint{color:#53677A}
+#stage,#zoomViewport{background:var(--uc-oxford);border-color:var(--uc-classic)}
+button{background:var(--uc-classic);color:var(--uc-white);border:1px solid var(--uc-classic);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease,transform .05s ease}
+button:hover:not(:disabled){background:var(--uc-wizard);border-color:var(--uc-wizard)}
+button:active:not(:disabled){transform:translateY(1px)}
+button:disabled{background:var(--uc-gray);border-color:var(--uc-gray);color:#EDF1F5;opacity:.68}
+#scaleBtn,#scaleBtnMobile,#originBtn,#originBtnMobile,#startBtn:not(:disabled),#startBtnMobile:not(:disabled){background:var(--uc-classic);border-color:var(--uc-classic)}
+button.modeActive#scaleBtn,button.modeActive#scaleBtnMobile{background:var(--uc-violet);border-color:var(--uc-violet);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(175,107,255,.22),0 4px 14px rgba(0,33,71,.18)}
+button.modeActive#originBtn,button.modeActive#originBtnMobile{background:var(--uc-peach);border-color:var(--uc-peach);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(245,166,128,.25),0 4px 14px rgba(0,33,71,.18)}
+button.recordActive#startBtn,button.recordActive#startBtnMobile{background:var(--uc-mint);border-color:var(--uc-mint);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(0,219,157,.22),0 4px 14px rgba(0,33,71,.18)}
+#exportBtn{background:var(--uc-wizard);border-color:var(--uc-wizard)}
+#exportBtn:hover:not(:disabled){background:var(--uc-classic);border-color:var(--uc-classic)}
+#resetAllBtn{background:var(--uc-gray);border-color:var(--uc-gray)}
+#resetAllBtn:hover:not(:disabled){background:var(--uc-oxford);border-color:var(--uc-oxford)}
+input,select{border-color:var(--uc-silver);background:var(--uc-white);color:var(--uc-text)}
+input:focus,select:focus{outline:2px solid var(--uc-wizard);outline-offset:1px}
+input[type="range"],input[type="checkbox"]{accent-color:var(--uc-wizard)}
+.dataChoice{background:#F8FAFC;color:var(--uc-text);border-color:var(--uc-silver)}
+.dataChoice:hover{border-color:var(--uc-wizard)}
+#scalePopup{background:var(--uc-oxford);color:var(--uc-white);border:1px solid var(--uc-silver);box-shadow:0 10px 30px rgba(0,33,71,.35)}
+#scalePopupOk{background:var(--uc-mint);border-color:var(--uc-mint);color:var(--uc-oxford)}
+#scalePopupCancel{background:var(--uc-gray);border-color:var(--uc-gray);color:var(--uc-white)}
+#status,#modeIndicator{color:var(--uc-text)}
+#status strong,#modeIndicator strong{color:var(--uc-classic)}
+@media(max-width:700px){
+ #mobileActionBar{background:rgba(0,33,71,.97);border-top:1px solid var(--uc-silver);box-shadow:0 -5px 18px rgba(0,33,71,.18)}
+}
+
+
+/* ===== v8.3 — Modo nocturno UC ===== */
+#themeToggleBtn{
+  background:var(--uc-oxford);
+  border-color:var(--uc-oxford);
+}
+#themeToggleBtn:hover:not(:disabled){
+  background:var(--uc-classic);
+  border-color:var(--uc-classic);
+}
+
+body.darkMode{
+  --uc-soft:#0B1624;
+  --uc-text:#EAF1F7;
+  background:#08111C;
+  color:var(--uc-text);
+}
+body.darkMode h1,
+body.darkMode h2,
+body.darkMode h3{
+  color:#EAF3FF;
+}
+body.darkMode .panel{
+  background:#102033;
+  color:#EAF1F7;
+  border-color:#27435F;
+  box-shadow:0 3px 14px rgba(0,0,0,.35);
+}
+body.darkMode .hint{
+  color:#B7C6D6;
+}
+body.darkMode #stage,
+body.darkMode #zoomViewport{
+  background:#03080E;
+  border-color:var(--uc-wizard);
+}
+body.darkMode input,
+body.darkMode select{
+  background:#0B1725;
+  color:#F4F8FC;
+  border-color:#526E89;
+}
+body.darkMode input::file-selector-button{
+  background:var(--uc-classic);
+  color:#fff;
+  border:1px solid var(--uc-classic);
+  border-radius:6px;
+  padding:6px 9px;
+}
+body.darkMode .dataChoice{
+  background:#13273B;
+  color:#EAF1F7;
+  border-color:#36536F;
+}
+body.darkMode .dataChoice:hover{
+  border-color:var(--uc-wizard);
+}
+body.darkMode #status,
+body.darkMode #modeIndicator{
+  color:#EAF1F7;
+}
+body.darkMode #status strong,
+body.darkMode #modeIndicator strong{
+  color:#8EC5FF;
+}
+body.darkMode #scalePopup{
+  background:#071421;
+  color:#fff;
+  border-color:#456783;
+}
+body.darkMode #themeToggleBtn{
+  background:var(--uc-silver);
+  border-color:var(--uc-silver);
+  color:var(--uc-oxford);
+}
+body.darkMode #themeToggleBtn:hover:not(:disabled){
+  background:#B4C8DA;
+  border-color:#B4C8DA;
+}
+body.darkMode button:disabled{
+  background:#465665;
+  border-color:#465665;
+  color:#AAB7C4;
+}
+body.darkMode #resetAllBtn{
+  background:#53687D;
+  border-color:#53687D;
+}
+body.darkMode #resetAllBtn:hover:not(:disabled){
+  background:#6C8298;
+  border-color:#6C8298;
+}
+body.darkMode #exportBtn{
+  background:var(--uc-wizard);
+  border-color:var(--uc-wizard);
+}
+body.darkMode #mobileActionBar{
+  background:rgba(3,12,22,.98);
+  border-top-color:#36536F;
+}
+body.darkMode .zoomControls,
+body.darkMode .videoControls{
+  color:#EAF1F7;
+}
+
+/* Mantener estados activos institucionales también de noche */
+body.darkMode button.modeActive#scaleBtn,
+body.darkMode button.modeActive#scaleBtnMobile{
+  background:var(--uc-violet);
+  border-color:var(--uc-violet);
+  color:#1A0E2A;
+}
+body.darkMode button.modeActive#originBtn,
+body.darkMode button.modeActive#originBtnMobile{
+  background:var(--uc-peach);
+  border-color:var(--uc-peach);
+  color:#2D160C;
+}
+body.darkMode button.recordActive#startBtn,
+body.darkMode button.recordActive#startBtnMobile{
+  background:var(--uc-mint);
+  border-color:var(--uc-mint);
+  color:#04291E;
+}
+
+</style>
+</head>
+<body>
+<h2>Rastreador de Movimiento v8.3</h2>
+
+<div class="panel">
+<input type="file" id="fileInput" accept="video/*">
+FPS <input type="number" id="fps" value="30" min="1" step="any">
+<button id="scaleBtn">Definir escala</button>
+<button id="originBtn">Definir origen</button>
+<label><input type="checkbox" id="gridChk" checked> Mostrar cuadrícula</label>
+<button id="startBtn" disabled>Iniciar registro</button>
+<button id="exportBtn">Exportar</button>
+<button type="button" id="resetAllBtn">↺ Resetear todo</button>
+<button type="button" id="themeToggleBtn" aria-pressed="false">🌙 Modo nocturno</button>
+</div>
+
+<div class="panel">
+  <div class="videoControls">
+    <button type="button" id="prevFrame" class="frameBtn">◀ −1 frame</button>
+    <button type="button" id="nextFrame" class="frameBtn">+1 frame ▶</button>
+    <span id="frameLabel">Frame 0</span>
+    <input type="range" id="seekRange" min="0" max="0" step="1" value="0" aria-label="Buscar frame">
+  </div>
+  <div class="videoControls">
+    <button type="button" id="rotateBtn">↻ Rotar 90°</button>
+    <span id="rotationLabel">0°</span>
+  </div>
+  <p class="hint">Navegar por el video no registra posiciones. En computador: barra espaciadora = avanzar 1 frame; flechas ←/→ = retroceder/avanzar 1 frame.</p>
+</div>
+
+<div id="stage">
+  <div id="zoomViewport">
+    <div id="zoomLayer">
+      <canvas id="displayCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="scalePopup" role="dialog" aria-modal="false" aria-label="Ingresar escala">
+  <div class="popupTitle">Distancia entre los dos puntos</div>
+  <div class="popupRow">
+    <input type="number" id="realDist" value="1" min="0" step="any" inputmode="decimal" aria-label="Distancia real">
+    <select id="unit" aria-label="Unidad"><option value="m">m</option><option value="cm">cm</option></select>
+    <button type="button" id="scalePopupOk">OK</button>
+    <button type="button" id="scalePopupCancel">Cancelar</button>
+  </div>
+</div>
+
+<div class="zoomControls">
+  <button type="button" id="zoomOut">−</button>
+  <input type="range" id="zoomRange" min="0.25" max="4" step="0.25" value="1" aria-label="Zoom">
+  <button type="button" id="zoomIn">+</button>
+  <button type="button" id="zoomReset">100%</button>
+  <span id="zoomLabel">100%</span>
+</div>
+<p class="hint">Puedes alejar el video hasta 25% o ampliarlo hasta 400%. En smartphone, cuando esté ampliado, puedes desplazarte por la imagen con el dedo. La rotación cambia la orientación visible del video, pero X permanece horizontal y Y vertical respecto de la pantalla.</p>
+
+
+<div class="panel" id="dataOptionsPanel">
+  <strong>Datos a exportar</strong>
+  <div class="hint">Seleccione las variables antes de iniciar el registro. El número de frame se incluye automáticamente.</div>
+  <div class="dataSelect">
+    <label class="dataChoice"><input type="checkbox" id="collectTime" checked> Tiempo (s)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectPixelX" checked> Posición X (px)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectPixelY" checked> Posición Y (px)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectRealX" checked> Posición X (unidad)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectRealY" checked> Posición Y (unidad)</label>
+  </div>
+</div>
+
+<p id="status"><strong>Estado:</strong> Cargue un video.</p>
+<p id="modeIndicator"><strong>Modo:</strong> Ninguno</p>
+
+<div id="mobileActionBar">
+  <button type="button" id="scaleBtnMobile">↔ Escala</button>
+  <button type="button" id="originBtnMobile">⊕ Origen</button>
+  <button type="button" id="startBtnMobile" disabled>● Registrar</button>
+</div>
+
+<script>
+let video,canvas,ctx;
+let mode="";
+let scalePts=[];
+let origin=null;
+let scaleFactor=null;
+let unit="m";
+let fps=30;
+let data=[];
+let recording=false;
+let zoom=1;
+let rotation=0;
+let currentFrame=0;
+let totalFrames=0;
+let objectUrl=null;
+
+const fileInput=document.getElementById("fileInput");
+const fpsInput=document.getElementById("fps");
+const scaleBtn=document.getElementById("scaleBtn");
+const realDist=document.getElementById("realDist");
+const unitSelect=document.getElementById("unit");
+const scalePopup=document.getElementById("scalePopup");
+const scalePopupOk=document.getElementById("scalePopupOk");
+const scalePopupCancel=document.getElementById("scalePopupCancel");
+const originBtn=document.getElementById("originBtn");
+const gridChk=document.getElementById("gridChk");
+const startBtn=document.getElementById("startBtn");
+const exportBtn=document.getElementById("exportBtn");
+const resetAllBtn=document.getElementById("resetAllBtn");
+const themeToggleBtn=document.getElementById("themeToggleBtn");
+const zoomViewport=document.getElementById("zoomViewport");
+const zoomLayer=document.getElementById("zoomLayer");
+const zoomRange=document.getElementById("zoomRange");
+const zoomLabel=document.getElementById("zoomLabel");
+const zoomOut=document.getElementById("zoomOut");
+const zoomIn=document.getElementById("zoomIn");
+const zoomReset=document.getElementById("zoomReset");
+const prevFrame=document.getElementById("prevFrame");
+const nextFrame=document.getElementById("nextFrame");
+const seekRange=document.getElementById("seekRange");
+const frameLabel=document.getElementById("frameLabel");
+const rotateBtn=document.getElementById("rotateBtn");
+const rotationLabel=document.getElementById("rotationLabel");
+const statusEl=document.getElementById("status");
+const modeIndicator=document.getElementById("modeIndicator");
+
+const collectTime=document.getElementById("collectTime");
+const collectPixelX=document.getElementById("collectPixelX");
+const collectPixelY=document.getElementById("collectPixelY");
+const collectRealX=document.getElementById("collectRealX");
+const collectRealY=document.getElementById("collectRealY");
+const scaleBtnMobile=document.getElementById("scaleBtnMobile");
+const originBtnMobile=document.getElementById("originBtnMobile");
+const startBtnMobile=document.getElementById("startBtnMobile");
+
+canvas=document.getElementById("displayCanvas");
+ctx=canvas.getContext("2d");
+
+fileInput.onchange=e=>{
+ const f=e.target.files[0];
+ if(!f) return;
+ if(objectUrl) URL.revokeObjectURL(objectUrl);
+ objectUrl=URL.createObjectURL(f);
+ video=document.createElement("video");
+ video.src=objectUrl;
+ video.muted=true;
+ video.preload="auto";
+ video.playsInline=true;
+ rotation=0;
+ currentFrame=0;
+ recording=false;
+ [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
+ data=[];
+ origin=null;
+ scaleFactor=null;
+ scalePts=[];
+ startBtn.disabled=true;
+ renderTable();
+ updateRotation();
+ video.onloadedmetadata=()=>{
+   fps=getFPS();
+   totalFrames=Math.max(1,Math.floor(video.duration*fps));
+   seekRange.max=Math.max(0,totalFrames-1);
+   seekRange.value=0;
+   updateCanvasGeometry();
+   setZoom(1);
+   seekToFrame(0);
+   statusEl.innerHTML="<strong>Estado:</strong> Video cargado. Puede navegar, definir escala y origen.";
+ };
+ video.onseeked=()=>draw();
+ video.onloadeddata=()=>draw();
+};
+
+function getFPS(){
+  return Math.max(1,parseFloat(fpsInput.value)||30);
+}
+
+fpsInput.addEventListener("change",()=>{
+  fps=getFPS();
+  if(video && Number.isFinite(video.duration)){
+    totalFrames=Math.max(1,Math.floor(video.duration*fps));
+    seekRange.max=Math.max(0,totalFrames-1);
+    currentFrame=Math.min(currentFrame,totalFrames-1);
+    seekToFrame(currentFrame);
+  }
+});
+
+function updateCanvasGeometry(){
+  if(!video || !video.videoWidth) return;
+  const w=video.videoWidth, h=video.videoHeight;
+  if(rotation===90 || rotation===270){
+    canvas.width=h; canvas.height=w;
+    zoomLayer.style.aspectRatio=`${h}/${w}`;
+  }else{
+    canvas.width=w; canvas.height=h;
+    zoomLayer.style.aspectRatio=`${w}/${h}`;
+  }
+  canvas.style.width="100%";
+  canvas.style.height="auto";
+  draw();
+}
+
+function applyOriginalTransform(){
+  const w=video.videoWidth, h=video.videoHeight;
+  if(rotation===0){ return; }
+  if(rotation===90){ ctx.translate(h,0); ctx.rotate(Math.PI/2); return; }
+  if(rotation===180){ ctx.translate(w,h); ctx.rotate(Math.PI); return; }
+  if(rotation===270){ ctx.translate(0,w); ctx.rotate(-Math.PI/2); }
+}
+
+function displayToOriginalAt(dx,dy,rot){
+  const w=video.videoWidth, h=video.videoHeight;
+  if(rot===0) return {x:dx,y:dy};
+  if(rot===90) return {x:dy,y:h-dx};
+  if(rot===180) return {x:w-dx,y:h-dy};
+  return {x:w-dy,y:dx};
+}
+
+function originalToDisplayAt(x,y,rot){
+  const w=video.videoWidth, h=video.videoHeight;
+  if(rot===0) return {x,y};
+  if(rot===90) return {x:h-y,y:x};
+  if(rot===180) return {x:w-x,y:h-y};
+  return {x:y,y:w-x};
+}
+
+function rotateStoredGeometry(oldRot,newRot){
+  if(!video) return;
+
+  const convert=p=>{
+    const o=displayToOriginalAt(p.x,p.y,oldRot);
+    return originalToDisplayAt(o.x,o.y,newRot);
+  };
+
+  if(origin) origin=convert(origin);
+  scalePts=scalePts.map(convert);
+
+  data=data.map(d=>{
+    const p=convert({x:d.xp,y:d.yp});
+    return {...d,xp:p.x,yp:p.y};
+  });
+
+  if(origin && scaleFactor){
+    data=data.map(d=>({
+      ...d,
+      xr:(d.xp-origin.x)*scaleFactor,
+      yr:(origin.y-d.yp)*scaleFactor
+    }));
+  }
+}
+
+function setZoom(value){
+  zoom=Math.max(0.25,Math.min(4,Number(value)||1));
+  zoomRange.value=zoom;
+  zoomLabel.textContent=`${Math.round(zoom*100)}%`;
+  zoomRange.setAttribute("aria-valuetext",`${Math.round(zoom*100)}%`);
+  zoomLayer.style.width=`${zoom*100}%`;
+}
+zoomRange.addEventListener("input",()=>setZoom(zoomRange.value));
+zoomIn.addEventListener("click",()=>setZoom(zoom+0.25));
+zoomOut.addEventListener("click",()=>setZoom(zoom-0.25));
+zoomReset.addEventListener("click",()=>setZoom(1));
+
+function updateRotation(){
+  rotationLabel.textContent=`${rotation}°`;
+  updateCanvasGeometry();
+}
+rotateBtn.addEventListener("click",()=>{
+  if(!video) return;
+  const oldRotation=rotation;
+  const newRotation=(rotation+90)%360;
+  rotateStoredGeometry(oldRotation,newRotation);
+  rotation=newRotation;
+  updateRotation();
+  renderTable();
+});
+
+function seekToFrame(target){
+  if(!video) return;
+  fps=getFPS();
+  const maxFrame=Math.max(0,totalFrames-1);
+  currentFrame=Math.max(0,Math.min(maxFrame,Math.round(target)));
+  seekRange.value=currentFrame;
+  frameLabel.textContent=`Frame ${currentFrame}`;
+  const t=Math.min(video.duration || 0,currentFrame/fps);
+  if(Math.abs(video.currentTime-t)>0.000001) video.currentTime=t;
+  else draw();
+}
+prevFrame.addEventListener("click",()=>seekToFrame(currentFrame-1));
+nextFrame.addEventListener("click",()=>seekToFrame(currentFrame+1));
+seekRange.addEventListener("input",()=>seekToFrame(Number(seekRange.value)));
+
+document.addEventListener("keydown",e=>{
+  if(!video) return;
+  const tag=(e.target.tagName||"").toLowerCase();
+  if(tag==="input" || tag==="select" || tag==="textarea" || e.target.isContentEditable) return;
+  if(e.code==="Space"){
+    e.preventDefault();
+    seekToFrame(currentFrame+1);
+  }else if(e.key==="ArrowLeft"){
+    e.preventDefault();
+    seekToFrame(currentFrame-1);
+  }else if(e.key==="ArrowRight"){
+    e.preventDefault();
+    seekToFrame(currentFrame+1);
+  }
+});
+
+
+function setButtonStates(){
+  const scaleActive=mode==="scale";
+  const originActive=mode==="origin";
+  scaleBtn.classList.toggle("modeActive",scaleActive);
+  originBtn.classList.toggle("modeActive",originActive);
+  startBtn.classList.toggle("recordActive",recording);
+  startBtn.textContent=recording ? "Registro activo" : "Iniciar registro";
+
+  scaleBtnMobile.classList.toggle("modeActive",scaleActive);
+  originBtnMobile.classList.toggle("modeActive",originActive);
+  startBtnMobile.classList.toggle("recordActive",recording);
+  startBtnMobile.textContent=recording ? "● Activo" : "● Registrar";
+}
+
+function hideScalePopup(){
+  scalePopup.classList.remove("visible");
+}
+
+function positionScalePopup(clientX,clientY){
+  scalePopup.classList.add("visible");
+  const pad=12;
+  const rect=scalePopup.getBoundingClientRect();
+  let left=clientX+14;
+  let top=clientY+14;
+  if(left+rect.width>window.innerWidth-pad) left=Math.max(pad,clientX-rect.width-14);
+  if(top+rect.height>window.innerHeight-pad) top=Math.max(pad,clientY-rect.height-14);
+  scalePopup.style.left=`${left}px`;
+  scalePopup.style.top=`${top}px`;
+  requestAnimationFrame(()=>realDist.focus());
+}
+
+function cancelModes(){
+  mode="";
+  hideScalePopup();
+  setButtonStates();
+}
+
+scaleBtn.onclick=()=>{
+    if(!video) return;
+    recording=false;
+    mode="scale";
+    scalePts=[];
+    hideScalePopup();
+    setButtonStates();
+    statusEl.innerHTML="<strong>Estado:</strong> Seleccione dos puntos para definir la escala.";
+    modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ESCALA";
+    draw();
+};
+originBtn.onclick=()=>{
+    if(!video) return;
+    recording=false;
+    mode="origin";
+    scalePts=[];
+    hideScalePopup();
+    setButtonStates();
+    statusEl.innerHTML="<strong>Estado:</strong> Seleccione el origen. X será horizontal y Y vertical respecto de la pantalla.";
+    modeIndicator.innerHTML="<strong>Modo:</strong> DEFINIR ORIGEN";
+    draw();
+};
+
+canvas.addEventListener("click",clickCanvas);
+canvas.addEventListener("mousemove",mouseMove);
+
+function canvasDisplayPoint(e){
+ const r=canvas.getBoundingClientRect();
+ const x=(e.clientX-r.left)/r.width*canvas.width;
+ const y=(e.clientY-r.top)/r.height*canvas.height;
+ return {x,y};
+}
+
+function clickCanvas(e){
+ if(!video) return;
+ const {x,y}=canvasDisplayPoint(e);
+
+ if(mode==="scale"){
+   if(scalePopup.classList.contains("visible")) return;
+   scalePts.push({x,y});
+   if(scalePts.length===2){
+     const d=Math.hypot(scalePts[1].x-scalePts[0].x,scalePts[1].y-scalePts[0].y);
+     if(d<=0){
+       scalePts=[];
+       statusEl.innerHTML="<strong>Estado:</strong> Los puntos deben ser distintos. Seleccione nuevamente dos puntos.";
+       draw();
+       return;
+     }
+     statusEl.innerHTML="<strong>Estado:</strong> Ingrese la distancia real entre los dos puntos.";
+     positionScalePopup(e.clientX,e.clientY);
+   }
+   draw();
+   return;
+ }
+
+ if(mode==="origin"){
+   origin={x,y};
+   mode="";
+   statusEl.innerHTML="<strong>Estado:</strong> Origen definido.";
+   modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+   setButtonStates();
+   enableStart();
+   draw();
+   return;
+ }
+
+ if(recording){
+   const xr=(x-origin.x)*scaleFactor;
+   const yr=(origin.y-y)*scaleFactor;
+   data.push({frame:currentFrame,time:currentFrame/fps,xr,yr,xp:x,yp:y});
+   renderTable();
+   draw();
+   seekToFrame(currentFrame+1);
+ }
+}
+
+
+scalePopupOk.addEventListener("click",()=>{
+  if(mode!=="scale" || scalePts.length!==2) return;
+  const value=Number(realDist.value);
+  if(!Number.isFinite(value) || value<=0){
+    statusEl.innerHTML="<strong>Estado:</strong> Ingrese una distancia mayor que 0.";
+    realDist.focus();
+    return;
+  }
+  const d=Math.hypot(scalePts[1].x-scalePts[0].x,scalePts[1].y-scalePts[0].y);
+  scaleFactor=value/d;
+  unit=unitSelect.value;
+  mode="";
+  hideScalePopup();
+  setButtonStates();
+  statusEl.innerHTML=`<strong>Estado:</strong> Escala definida: ${value} ${unit}.`;
+  modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+  enableStart();
+  draw();
+});
+
+scalePopupCancel.addEventListener("click",()=>{
+  scalePts=[];
+  mode="";
+  hideScalePopup();
+  setButtonStates();
+  statusEl.innerHTML="<strong>Estado:</strong> Definición de escala cancelada.";
+  modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+  draw();
+});
+
+realDist.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    e.preventDefault();
+    scalePopupOk.click();
+  }else if(e.key==="Escape"){
+    e.preventDefault();
+    scalePopupCancel.click();
+  }
+});
+
+function enableStart(){
+  const ready=!!(video && origin && scaleFactor);
+  startBtn.disabled=!ready;
+  startBtnMobile.disabled=!ready;
+}
+
+startBtn.onclick=()=>{
+ if(startBtn.disabled) return;
+ if(![collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].some(el=>el.checked)){
+   alert("Seleccione al menos una variable para exportar.");
+   return;
+ }
+ fps=getFPS();
+ mode="";
+ hideScalePopup();
+ data=[];
+ recording=true;
+ [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=true);
+ setButtonStates();
+ renderTable();
+ modeIndicator.innerHTML="<strong>Modo:</strong> REGISTRO ACTIVO";
+ statusEl.innerHTML=`<strong>Estado:</strong> Registrando desde el frame ${currentFrame}. Use los controles para buscar el frame y haga clic sobre el objeto para registrar.`;
+};
+
+function draw(){
+ if(!ctx || !video || !video.videoWidth) return;
+ ctx.setTransform(1,0,0,1,0,0);
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ // Solo el fotograma del video se transforma.
+ ctx.save();
+ applyOriginalTransform();
+ try{ ctx.drawImage(video,0,0,video.videoWidth,video.videoHeight); }catch(err){}
+ ctx.restore();
+
+ // Ejes, cuadrícula, escala y puntos se dibujan en el sistema visible:
+ // X horizontal (derecha +), Y vertical (arriba +), sin importar la rotación.
+ drawOverlaysDisplay();
+}
+
+function drawOverlaysDisplay(){
+ if(origin){
+   if(gridChk.checked && scaleFactor){
+     const step=(unit==="cm"?10:0.1)/scaleFactor;
+     if(Number.isFinite(step) && step>1){
+       ctx.strokeStyle="rgba(255,255,255,.18)";
+       ctx.lineWidth=1;
+       for(let x=origin.x;x<canvas.width;x+=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+       for(let x=origin.x;x>0;x-=step){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke();}
+       for(let y=origin.y;y<canvas.height;y+=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+       for(let y=origin.y;y>0;y-=step){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke();}
+     }
+   }
+   ctx.lineWidth=2;
+   ctx.strokeStyle="red";
+   ctx.beginPath();ctx.moveTo(0,origin.y);ctx.lineTo(canvas.width,origin.y);ctx.stroke();
+   ctx.strokeStyle="lime";
+   ctx.beginPath();ctx.moveTo(origin.x,0);ctx.lineTo(origin.x,canvas.height);ctx.stroke();
+ }
+
+ if(scalePts.length){
+   ctx.fillStyle="yellow";
+   scalePts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();});
+ }
+
+ if(data.length){
+   ctx.strokeStyle="cyan";
+   ctx.lineWidth=2;
+   ctx.beginPath();
+   data.forEach((p,i)=>{ if(i===0) ctx.moveTo(p.xp,p.yp); else ctx.lineTo(p.xp,p.yp); });
+   ctx.stroke();
+
+   data.forEach((p,i)=>{
+     const alpha=Math.max(0.15,(i+1)/data.length);
+     ctx.fillStyle=`rgba(255,255,0,${alpha})`;
+     ctx.beginPath();ctx.arc(p.xp,p.yp,5,0,Math.PI*2);ctx.fill();
+   });
+   const last=data[data.length-1];
+   ctx.fillStyle="rgba(255,0,0,1)";
+   ctx.beginPath();ctx.arc(last.xp,last.yp,7,0,Math.PI*2);ctx.fill();
+ }
+}
+
+gridChk.addEventListener("change",draw);
+
+
+function applyTheme(isDark){
+  document.body.classList.toggle("darkMode",isDark);
+  themeToggleBtn.setAttribute("aria-pressed",isDark ? "true" : "false");
+  themeToggleBtn.textContent=isDark ? "☀️ Modo claro" : "🌙 Modo nocturno";
+  try{
+    localStorage.setItem("rastreadorTema",isDark ? "dark" : "light");
+  }catch(e){}
+}
+
+themeToggleBtn.addEventListener("click",()=>{
+  applyTheme(!document.body.classList.contains("darkMode"));
+});
+
+try{
+  const savedTheme=localStorage.getItem("rastreadorTema");
+  if(savedTheme==="dark") applyTheme(true);
+}catch(e){}
+
+scaleBtnMobile.addEventListener("click",()=>scaleBtn.click());
+originBtnMobile.addEventListener("click",()=>originBtn.click());
+startBtnMobile.addEventListener("click",()=>startBtn.click());
+
+
+function mouseMove(e){
+ if(!(origin&&scaleFactor) || !video) return;
+ const {x,y}=canvasDisplayPoint(e);
+ statusEl.textContent=`Frame ${currentFrame} | X=${((x-origin.x)*scaleFactor).toFixed(2)} ${unit}, Y=${((origin.y-y)*scaleFactor).toFixed(2)} ${unit}`;
+}
+
+function renderTable(){}
+
+
+function resetAll(){
+  recording=false;
+  mode="";
+  scalePts=[];
+  origin=null;
+  scaleFactor=null;
+  unit="m";
+  fps=30;
+  data=[];
+  zoom=1;
+  rotation=0;
+  currentFrame=0;
+  totalFrames=0;
+
+  if(video){
+    try{ video.pause(); }catch(err){}
+    video.removeAttribute("src");
+    try{ video.load(); }catch(err){}
+  }
+  video=null;
+
+  if(objectUrl){
+    URL.revokeObjectURL(objectUrl);
+    objectUrl=null;
+  }
+
+  fileInput.value="";
+  fpsInput.value="30";
+  realDist.value="1";
+  unitSelect.value="m";
+  gridChk.checked=true;
+
+  [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>{
+    el.disabled=false;
+    el.checked=true;
+  });
+
+
+  startBtn.disabled=true;
+  startBtnMobile.disabled=true;
+  seekRange.min="0";
+  seekRange.max="0";
+  seekRange.value="0";
+  frameLabel.textContent="Frame 0";
+  rotationLabel.textContent="0°";
+  modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+  statusEl.innerHTML="<strong>Estado:</strong> Cargue un video.";
+  hideScalePopup();
+  setButtonStates();
+
+  setZoom(1);
+  zoomViewport.scrollLeft=0;
+  zoomViewport.scrollTop=0;
+
+  canvas.width=1;
+  canvas.height=1;
+  zoomLayer.style.aspectRatio="auto";
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  renderTable();
+}
+
+resetAllBtn.addEventListener("click",resetAll);
+
+exportBtn.onclick=()=>{
+  if(!data.length){
+    alert("No hay datos registrados para exportar.");
+    return;
+  }
+
+  const columns=[{key:"frame",label:"Frame"}];
+  if(collectTime.checked) columns.push({key:"time",label:"Tiempo (s)"});
+  if(collectPixelX.checked) columns.push({key:"xp",label:"Posición X (px)"});
+  if(collectPixelY.checked) columns.push({key:"yp",label:"Posición Y (px)"});
+  if(collectRealX.checked) columns.push({key:"xr",label:`Posición X (${unit})`});
+  if(collectRealY.checked) columns.push({key:"yr",label:`Posición Y (${unit})`});
+
+  const rows=[
+    columns.map(c=>c.label),
+    ...data.map(d=>columns.map(c=>d[c.key]))
+  ];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Datos");
+  XLSX.writeFile(wb,"datos_movimiento_v8_3.xlsx");
+};
+</script>
+</body>
+</html>
