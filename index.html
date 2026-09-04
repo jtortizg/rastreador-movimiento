@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v8.3</title>
+<title>Rastreador de Movimiento v9</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -364,10 +364,92 @@ body.darkMode button.recordActive#startBtnMobile{
   color:#04291E;
 }
 
+
+/* ===== v9: interfaz PC + interfaz móvil dedicada ===== */
+#mobileUI{display:none}
+#desktopUI{display:block}
+@media(max-width:700px){
+  body{padding:0;margin:0;overflow-x:hidden}
+  #desktopUI{display:none!important}
+  #mobileUI{display:flex;flex-direction:column;gap:8px;padding:8px;width:100%;box-sizing:border-box}
+  #mobileUI .mobileRow{display:grid;width:100%;gap:6px;align-items:center;box-sizing:border-box}
+  #mobileUI button,#mobileUI input{box-sizing:border-box}
+  .row1{grid-template-columns:1fr}.row1 button{width:100%;min-height:46px}
+  .row2{grid-template-columns:minmax(0,1fr) 88px}.row2 #fileInputMobile{width:100%;min-width:0}
+  .fpsBox{display:grid;gap:3px;text-align:center;font-size:.78rem}.fpsBox input{width:100%;text-align:center}
+  .row3,.row4{grid-template-columns:1fr 1fr}.row3 button,.row4 button{min-height:48px}
+  .row5{grid-template-columns:1fr}.row5 input{width:100%}#frameLabelMobile{text-align:center;font-weight:700;color:var(--uc-classic)}
+  .row6{grid-template-columns:1fr}#mobileVideoHost{width:100%;min-height:250px}
+  #mobileVideoHost #stage{width:100%;margin:0}#mobileVideoHost #zoomViewport{width:100%;height:50vh;min-height:250px;max-height:58vh}
+  .row7{grid-template-columns:48px minmax(0,1fr) 48px 62px}.row7 button{min-height:44px;font-size:1.15rem;font-weight:bold}.row7 input{width:100%}
+  #zoomLabelMobile,#rotationLabelMobile{padding:10px 4px;text-align:center;font-weight:700;border:1px solid var(--uc-silver);border-radius:7px;background:var(--uc-white);color:var(--uc-oxford)}
+  .row8{grid-template-columns:1fr 90px}.row8 button{min-height:46px}
+  .row9{grid-template-columns:1fr}.mobileDataPanel{background:var(--uc-white);border:1px solid var(--uc-silver);border-radius:9px;padding:9px;box-sizing:border-box}
+  .mobileDataSelect{grid-template-columns:1fr 1fr}
+  .row10{grid-template-columns:repeat(3,1fr)}.row10 button{min-height:52px;font-size:.8rem;font-weight:bold;padding:5px 3px}
+  .row11{grid-template-columns:1fr}.row11 button{width:100%;min-height:54px;font-weight:800;background:var(--uc-wizard);border-color:var(--uc-wizard)}
+  #gridMobile.gridOn{background:var(--uc-peach);border-color:var(--uc-peach);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(245,166,128,.22)}
+  #gridMobile.gridOff{background:var(--uc-gray);border-color:var(--uc-gray);color:#fff}
+  body.darkMode #zoomLabelMobile,body.darkMode #rotationLabelMobile,body.darkMode .mobileDataPanel{background:#102033;color:#EAF1F7;border-color:#36536F}
+  body.darkMode #frameLabelMobile{color:#8EC5FF}
+}
+
 </style>
 </head>
 <body>
-<h2>Rastreador de Movimiento v8.3</h2>
+
+<div id="mobileUI">
+  <div class="mobileRow row1"><button id="themeToggleMobile">🌙 Modo nocturno</button></div>
+  <div class="mobileRow row2">
+    <input type="file" id="fileInputMobile" accept="video/*">
+    <div class="fpsBox"><span>FPS</span><input type="number" id="fpsMobile" value="30" min="1" step="1"></div>
+  </div>
+  <div class="mobileRow row3">
+    <button id="resetMobile">↺ RESET</button>
+    <button id="gridMobile" aria-pressed="true">▦ CUADRÍCULA</button>
+  </div>
+  <div class="mobileRow row4">
+    <button id="prevFrameMobile">◀ −1 frame</button>
+    <button id="nextFrameMobile">+1 frame ▶</button>
+  </div>
+  <div class="mobileRow row5">
+    <input type="range" id="seekRangeMobile" min="0" max="0" value="0" step="1">
+    <div id="frameLabelMobile">Frame 0</div>
+  </div>
+  <div class="mobileRow row6"><div id="mobileVideoHost"></div></div>
+  <div class="mobileRow row7">
+    <button id="zoomOutMobile">−</button>
+    <input type="range" id="zoomRangeMobile" min="25" max="400" value="100" step="25">
+    <button id="zoomInMobile">+</button>
+    <div id="zoomLabelMobile">100%</div>
+  </div>
+  <div class="mobileRow row8">
+    <button id="rotateMobile">⟳ ROTAR</button>
+    <div id="rotationLabelMobile">0°</div>
+  </div>
+  <div class="mobileRow row9">
+    <div class="mobileDataPanel">
+      <strong>Datos a exportar</strong>
+      <div class="hint">Seleccione las variables antes de iniciar el registro. El número de frame se incluye automáticamente.</div>
+      <div class="dataSelect mobileDataSelect">
+        <label class="dataChoice"><input type="checkbox" id="collectTimeMobile" checked> Tiempo (s)</label>
+        <label class="dataChoice"><input type="checkbox" id="collectPixelXMobile" checked> Posición X (px)</label>
+        <label class="dataChoice"><input type="checkbox" id="collectPixelYMobile" checked> Posición Y (px)</label>
+        <label class="dataChoice"><input type="checkbox" id="collectRealXMobile" checked> Posición X (unidad)</label>
+        <label class="dataChoice"><input type="checkbox" id="collectRealYMobile" checked> Posición Y (unidad)</label>
+      </div>
+    </div>
+  </div>
+  <div class="mobileRow row10">
+    <button id="scaleMobile">↔ ESCALA</button>
+    <button id="originMobile">⊕ ORIGEN</button>
+    <button id="recordMobile" disabled>● REGISTRAR</button>
+  </div>
+  <div class="mobileRow row11"><button id="finishExportMobile">TERMINAR Y EXPORTAR DATOS</button></div>
+</div>
+
+<div id="desktopUI">
+<h2>Rastreador de Movimiento v9</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -444,6 +526,8 @@ FPS <input type="number" id="fps" value="30" min="1" step="any">
   <button type="button" id="startBtnMobile" disabled>● Registrar</button>
 </div>
 
+
+</div>
 <script>
 let video,canvas,ctx;
 let mode="";
@@ -474,6 +558,32 @@ const startBtn=document.getElementById("startBtn");
 const exportBtn=document.getElementById("exportBtn");
 const resetAllBtn=document.getElementById("resetAllBtn");
 const themeToggleBtn=document.getElementById("themeToggleBtn");
+const themeToggleMobile=document.getElementById("themeToggleMobile");
+const fileInputMobile=document.getElementById("fileInputMobile");
+const fpsMobile=document.getElementById("fpsMobile");
+const resetMobile=document.getElementById("resetMobile");
+const gridMobile=document.getElementById("gridMobile");
+const prevFrameMobile=document.getElementById("prevFrameMobile");
+const nextFrameMobile=document.getElementById("nextFrameMobile");
+const seekRangeMobile=document.getElementById("seekRangeMobile");
+const frameLabelMobile=document.getElementById("frameLabelMobile");
+const mobileVideoHost=document.getElementById("mobileVideoHost");
+const zoomOutMobile=document.getElementById("zoomOutMobile");
+const zoomRangeMobile=document.getElementById("zoomRangeMobile");
+const zoomInMobile=document.getElementById("zoomInMobile");
+const zoomLabelMobile=document.getElementById("zoomLabelMobile");
+const rotateMobile=document.getElementById("rotateMobile");
+const rotationLabelMobile=document.getElementById("rotationLabelMobile");
+const collectTimeMobile=document.getElementById("collectTimeMobile");
+const collectPixelXMobile=document.getElementById("collectPixelXMobile");
+const collectPixelYMobile=document.getElementById("collectPixelYMobile");
+const collectRealXMobile=document.getElementById("collectRealXMobile");
+const collectRealYMobile=document.getElementById("collectRealYMobile");
+const scaleMobile=document.getElementById("scaleMobile");
+const originMobile=document.getElementById("originMobile");
+const recordMobile=document.getElementById("recordMobile");
+const finishExportMobile=document.getElementById("finishExportMobile");
+
 const zoomViewport=document.getElementById("zoomViewport");
 const zoomLayer=document.getElementById("zoomLayer");
 const zoomRange=document.getElementById("zoomRange");
@@ -656,6 +766,37 @@ prevFrame.addEventListener("click",()=>seekToFrame(currentFrame-1));
 nextFrame.addEventListener("click",()=>seekToFrame(currentFrame+1));
 seekRange.addEventListener("input",()=>seekToFrame(Number(seekRange.value)));
 
+
+themeToggleMobile.addEventListener("click",()=>themeToggleBtn.click());
+fileInputMobile.addEventListener("change",()=>{
+ if(!fileInputMobile.files||!fileInputMobile.files[0])return;
+ const dt=new DataTransfer();dt.items.add(fileInputMobile.files[0]);fileInput.files=dt.files;fileInput.dispatchEvent(new Event("change"));
+});
+fpsMobile.addEventListener("input",()=>{fpsInput.value=fpsMobile.value;});
+resetMobile.addEventListener("click",()=>resetAllBtn.click());
+gridMobile.addEventListener("click",()=>{gridChk.checked=!gridChk.checked;gridChk.dispatchEvent(new Event("change"));syncMobileUI();});
+prevFrameMobile.addEventListener("click",()=>prevFrameBtn.click());
+nextFrameMobile.addEventListener("click",()=>nextFrameBtn.click());
+seekRangeMobile.addEventListener("input",()=>{seekRange.value=seekRangeMobile.value;seekRange.dispatchEvent(new Event("input"));});
+zoomOutMobile.addEventListener("click",()=>zoomOutBtn.click());
+zoomInMobile.addEventListener("click",()=>zoomInBtn.click());
+zoomRangeMobile.addEventListener("input",()=>{zoomRange.value=zoomRangeMobile.value;zoomRange.dispatchEvent(new Event("input"));});
+rotateMobile.addEventListener("click",()=>rotateBtn.click());
+[collectTimeMobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile].forEach(el=>el.addEventListener("change",()=>{syncDesktopSelectionsFromMobile();syncMobileUI();}));
+scaleMobile.addEventListener("click",()=>scaleBtn.click());
+originMobile.addEventListener("click",()=>originBtn.click());
+recordMobile.addEventListener("click",()=>{syncDesktopSelectionsFromMobile();startBtn.click();syncMobileUI();});
+finishExportMobile.addEventListener("click",()=>{
+ recording=false;mode="";[collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
+ setButtonStates();modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
+ if(data.length){exportBtn.click();statusEl.innerHTML="<strong>Estado:</strong> Registro finalizado y datos exportados.";}
+ else alert("No hay datos registrados para exportar.");
+ syncMobileUI();
+});
+window.addEventListener("resize",()=>{moveStageForLayout();syncMobileUI();});
+fileInput.addEventListener("change",()=>setTimeout(()=>{moveStageForLayout();syncMobileUI();},0));
+moveStageForLayout();syncMobileUI();
+
 document.addEventListener("keydown",e=>{
   if(!video) return;
   const tag=(e.target.tagName||"").toLowerCase();
@@ -685,6 +826,7 @@ function setButtonStates(){
   originBtnMobile.classList.toggle("modeActive",originActive);
   startBtnMobile.classList.toggle("recordActive",recording);
   startBtnMobile.textContent=recording ? "● Activo" : "● Registrar";
+  if(typeof syncMobileUI==="function")syncMobileUI();
 }
 
 function hideScalePopup(){
@@ -913,6 +1055,36 @@ function drawOverlaysDisplay(){
 gridChk.addEventListener("change",draw);
 
 
+
+function isMobileLayout(){return window.matchMedia("(max-width:700px)").matches;}
+function syncDesktopSelectionsFromMobile(){
+ collectTime.checked=collectTimeMobile.checked; collectPixelX.checked=collectPixelXMobile.checked;
+ collectPixelY.checked=collectPixelYMobile.checked; collectRealX.checked=collectRealXMobile.checked; collectRealY.checked=collectRealYMobile.checked;
+}
+function syncMobileSelections(){
+ const a=[collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY];
+ const b=[collectTimeMobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile];
+ b.forEach((el,i)=>{el.checked=a[i].checked;el.disabled=a[i].disabled;});
+}
+function syncMobileUI(){
+ fpsMobile.value=fpsInput.value; seekRangeMobile.max=seekRange.max; seekRangeMobile.value=seekRange.value;
+ frameLabelMobile.textContent=frameLabel.textContent; zoomRangeMobile.value=zoomRange.value; zoomLabelMobile.textContent=zoomLabel.textContent;
+ rotationLabelMobile.textContent=rotationLabel.textContent;
+ const g=gridChk.checked; gridMobile.classList.toggle("gridOn",g); gridMobile.classList.toggle("gridOff",!g); gridMobile.setAttribute("aria-pressed",g);
+ scaleMobile.classList.toggle("modeActive",mode==="scale"); originMobile.classList.toggle("modeActive",mode==="origin");
+ recordMobile.classList.toggle("recordActive",recording); recordMobile.disabled=startBtn.disabled; recordMobile.textContent=recording?"● ACTIVO":"● REGISTRAR";
+ const dark=document.body.classList.contains("darkMode"); themeToggleMobile.textContent=dark?"☀️ Modo claro":"🌙 Modo nocturno";
+ syncMobileSelections();
+}
+function moveStageForLayout(){
+ const stage=document.getElementById("stage"); if(!stage)return;
+ if(isMobileLayout()){ if(stage.parentElement!==mobileVideoHost) mobileVideoHost.appendChild(stage); }
+ else{
+   const zoomControls=document.querySelector("#desktopUI .zoomControls");
+   if(zoomControls && zoomControls.parentElement && stage.parentElement!==zoomControls.parentElement) zoomControls.parentElement.insertBefore(stage,zoomControls);
+ }
+}
+
 function applyTheme(isDark){
   document.body.classList.toggle("darkMode",isDark);
   themeToggleBtn.setAttribute("aria-pressed",isDark ? "true" : "false");
@@ -920,6 +1092,7 @@ function applyTheme(isDark){
   try{
     localStorage.setItem("rastreadorTema",isDark ? "dark" : "light");
   }catch(e){}
+  if(typeof syncMobileUI==="function") syncMobileUI();
 }
 
 themeToggleBtn.addEventListener("click",()=>{
@@ -1030,7 +1203,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v8_3.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v9.xlsx");
 };
 </script>
 </body>
