@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v9</title>
+<title>Rastreador de Movimiento v9.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -388,8 +388,18 @@ body.darkMode button.recordActive#startBtnMobile{
   .mobileDataSelect{grid-template-columns:1fr 1fr}
   .row10{grid-template-columns:repeat(3,1fr)}.row10 button{min-height:52px;font-size:.8rem;font-weight:bold;padding:5px 3px}
   .row11{grid-template-columns:1fr}.row11 button{width:100%;min-height:54px;font-weight:800;background:var(--uc-wizard);border-color:var(--uc-wizard)}
-  #gridMobile.gridOn{background:var(--uc-peach);border-color:var(--uc-peach);color:var(--uc-oxford);box-shadow:0 0 0 3px rgba(245,166,128,.22)}
-  #gridMobile.gridOff{background:var(--uc-gray);border-color:var(--uc-gray);color:#fff}
+  #gridMobile.gridOn{
+    background:var(--uc-mint);
+    border-color:var(--uc-mint);
+    color:var(--uc-oxford);
+    box-shadow:0 0 0 3px rgba(0,219,157,.22),0 4px 12px rgba(0,33,71,.16)
+  }
+  #gridMobile.gridOff{
+    background:var(--uc-classic);
+    border-color:var(--uc-classic);
+    color:#fff;
+    box-shadow:none
+  }
   body.darkMode #zoomLabelMobile,body.darkMode #rotationLabelMobile,body.darkMode .mobileDataPanel{background:#102033;color:#EAF1F7;border-color:#36536F}
   body.darkMode #frameLabelMobile{color:#8EC5FF}
 }
@@ -406,7 +416,7 @@ body.darkMode button.recordActive#startBtnMobile{
   </div>
   <div class="mobileRow row3">
     <button id="resetMobile">↺ RESET</button>
-    <button id="gridMobile" aria-pressed="true">▦ CUADRÍCULA</button>
+    <button id="gridMobile" class="gridOn" aria-pressed="true">▦ CUADRÍCULA</button>
   </div>
   <div class="mobileRow row4">
     <button id="prevFrameMobile">◀ −1 frame</button>
@@ -449,7 +459,7 @@ body.darkMode button.recordActive#startBtnMobile{
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v9</h2>
+<h2>Rastreador de Movimiento v9.1</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
