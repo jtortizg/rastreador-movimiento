@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v9.1</title>
+<title>Rastreador de Movimiento v9.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -384,10 +384,11 @@ body.darkMode button.recordActive#startBtnMobile{
   .row7{grid-template-columns:48px minmax(0,1fr) 48px 62px}.row7 button{min-height:44px;font-size:1.15rem;font-weight:bold}.row7 input{width:100%}
   #zoomLabelMobile,#rotationLabelMobile{padding:10px 4px;text-align:center;font-weight:700;border:1px solid var(--uc-silver);border-radius:7px;background:var(--uc-white);color:var(--uc-oxford)}
   .row8{grid-template-columns:1fr 90px}.row8 button{min-height:46px}
-  .row9{grid-template-columns:1fr}.mobileDataPanel{background:var(--uc-white);border:1px solid var(--uc-silver);border-radius:9px;padding:9px;box-sizing:border-box}
+  .row9{grid-template-columns:repeat(3,1fr)}.mobileDataPanel{background:var(--uc-white);border:1px solid var(--uc-silver);border-radius:9px;padding:9px;box-sizing:border-box}
   .mobileDataSelect{grid-template-columns:1fr 1fr}
-  .row10{grid-template-columns:repeat(3,1fr)}.row10 button{min-height:52px;font-size:.8rem;font-weight:bold;padding:5px 3px}
-  .row11{grid-template-columns:1fr}.row11 button{width:100%;min-height:54px;font-weight:800;background:var(--uc-wizard);border-color:var(--uc-wizard)}
+  .row9 button{min-height:52px;font-size:.8rem;font-weight:bold;padding:5px 3px}
+  .row10{grid-template-columns:1fr}.row10 button{width:100%;min-height:54px;font-weight:800;background:var(--uc-wizard);border-color:var(--uc-wizard)}
+  .row11{grid-template-columns:1fr}
   #gridMobile.gridOn{
     background:var(--uc-mint);
     border-color:var(--uc-mint);
@@ -402,6 +403,31 @@ body.darkMode button.recordActive#startBtnMobile{
   }
   body.darkMode #zoomLabelMobile,body.darkMode #rotationLabelMobile,body.darkMode .mobileDataPanel{background:#102033;color:#EAF1F7;border-color:#36536F}
   body.darkMode #frameLabelMobile{color:#8EC5FF}
+}
+
+
+/* v9.2 — corrección definitiva botón CUADRÍCULA móvil */
+@media(max-width:700px){
+  #mobileUI #gridMobile{
+    background:var(--uc-classic) !important;
+    border-color:var(--uc-classic) !important;
+    color:#fff !important;
+    box-shadow:none !important;
+  }
+  #mobileUI #gridMobile.gridOn,
+  #mobileUI #gridMobile[aria-pressed="true"]{
+    background:var(--uc-mint) !important;
+    border-color:var(--uc-mint) !important;
+    color:var(--uc-oxford) !important;
+    box-shadow:0 0 0 3px rgba(0,219,157,.22),0 4px 12px rgba(0,33,71,.16) !important;
+  }
+  #mobileUI #gridMobile.gridOff,
+  #mobileUI #gridMobile[aria-pressed="false"]{
+    background:var(--uc-classic) !important;
+    border-color:var(--uc-classic) !important;
+    color:#fff !important;
+    box-shadow:none !important;
+  }
 }
 
 </style>
@@ -437,7 +463,18 @@ body.darkMode button.recordActive#startBtnMobile{
     <button id="rotateMobile">⟳ ROTAR</button>
     <div id="rotationLabelMobile">0°</div>
   </div>
+
   <div class="mobileRow row9">
+    <button id="scaleMobile">↔ ESCALA</button>
+    <button id="originMobile">⊕ ORIGEN</button>
+    <button id="recordMobile" disabled>● REGISTRAR</button>
+  </div>
+
+  <div class="mobileRow row10">
+    <button id="finishExportMobile">TERMINAR Y EXPORTAR DATOS</button>
+  </div>
+
+  <div class="mobileRow row11">
     <div class="mobileDataPanel">
       <strong>Datos a exportar</strong>
       <div class="hint">Seleccione las variables antes de iniciar el registro. El número de frame se incluye automáticamente.</div>
@@ -450,16 +487,10 @@ body.darkMode button.recordActive#startBtnMobile{
       </div>
     </div>
   </div>
-  <div class="mobileRow row10">
-    <button id="scaleMobile">↔ ESCALA</button>
-    <button id="originMobile">⊕ ORIGEN</button>
-    <button id="recordMobile" disabled>● REGISTRAR</button>
-  </div>
-  <div class="mobileRow row11"><button id="finishExportMobile">TERMINAR Y EXPORTAR DATOS</button></div>
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v9.1</h2>
+<h2>Rastreador de Movimiento v9.2</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
