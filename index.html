@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v9.2</title>
+<title>Rastreador de Movimiento v9.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -430,6 +430,25 @@ body.darkMode button.recordActive#startBtnMobile{
   }
 }
 
+
+/* v9.3 — popup de escala compartido PC/móvil */
+#scalePopup{
+  z-index:10000 !important;
+}
+@media(max-width:700px){
+  #scalePopup{
+    max-width:calc(100vw - 24px);
+    box-sizing:border-box;
+  }
+  #scalePopup .popupRow{
+    flex-wrap:nowrap;
+  }
+  #scalePopup input{
+    min-width:0;
+    flex:1 1 110px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -455,7 +474,7 @@ body.darkMode button.recordActive#startBtnMobile{
   <div class="mobileRow row6"><div id="mobileVideoHost"></div></div>
   <div class="mobileRow row7">
     <button id="zoomOutMobile">−</button>
-    <input type="range" id="zoomRangeMobile" min="25" max="400" value="100" step="25">
+    <input type="range" id="zoomRangeMobile" min="0.25" max="4" value="1" step="0.25">
     <button id="zoomInMobile">+</button>
     <div id="zoomLabelMobile">100%</div>
   </div>
@@ -490,7 +509,7 @@ body.darkMode button.recordActive#startBtnMobile{
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v9.2</h2>
+<h2>Rastreador de Movimiento v9.3</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -772,6 +791,7 @@ function setZoom(value){
   zoomLabel.textContent=`${Math.round(zoom*100)}%`;
   zoomRange.setAttribute("aria-valuetext",`${Math.round(zoom*100)}%`);
   zoomLayer.style.width=`${zoom*100}%`;
+  if(typeof syncMobileUI==="function") syncMobileUI();
 }
 zoomRange.addEventListener("input",()=>setZoom(zoomRange.value));
 zoomIn.addEventListener("click",()=>setZoom(zoom+0.25));
@@ -780,6 +800,7 @@ zoomReset.addEventListener("click",()=>setZoom(1));
 
 function updateRotation(){
   rotationLabel.textContent=`${rotation}°`;
+  if(typeof syncMobileUI==="function") syncMobileUI();
   updateCanvasGeometry();
 }
 rotateBtn.addEventListener("click",()=>{
@@ -799,6 +820,7 @@ function seekToFrame(target){
   currentFrame=Math.max(0,Math.min(maxFrame,Math.round(target)));
   seekRange.value=currentFrame;
   frameLabel.textContent=`Frame ${currentFrame}`;
+  if(typeof syncMobileUI==="function") syncMobileUI();
   const t=Math.min(video.duration || 0,currentFrame/fps);
   if(Math.abs(video.currentTime-t)>0.000001) video.currentTime=t;
   else draw();
@@ -816,16 +838,16 @@ fileInputMobile.addEventListener("change",()=>{
 fpsMobile.addEventListener("input",()=>{fpsInput.value=fpsMobile.value;});
 resetMobile.addEventListener("click",()=>resetAllBtn.click());
 gridMobile.addEventListener("click",()=>{gridChk.checked=!gridChk.checked;gridChk.dispatchEvent(new Event("change"));syncMobileUI();});
-prevFrameMobile.addEventListener("click",()=>prevFrameBtn.click());
-nextFrameMobile.addEventListener("click",()=>nextFrameBtn.click());
+prevFrameMobile.addEventListener("click",()=>{prevFrame.click();syncMobileUI();});
+nextFrameMobile.addEventListener("click",()=>{nextFrame.click();syncMobileUI();});
 seekRangeMobile.addEventListener("input",()=>{seekRange.value=seekRangeMobile.value;seekRange.dispatchEvent(new Event("input"));});
-zoomOutMobile.addEventListener("click",()=>zoomOutBtn.click());
-zoomInMobile.addEventListener("click",()=>zoomInBtn.click());
+zoomOutMobile.addEventListener("click",()=>{zoomOut.click();syncMobileUI();});
+zoomInMobile.addEventListener("click",()=>{zoomIn.click();syncMobileUI();});
 zoomRangeMobile.addEventListener("input",()=>{zoomRange.value=zoomRangeMobile.value;zoomRange.dispatchEvent(new Event("input"));});
-rotateMobile.addEventListener("click",()=>rotateBtn.click());
+rotateMobile.addEventListener("click",()=>{rotateBtn.click();syncMobileUI();});
 [collectTimeMobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile].forEach(el=>el.addEventListener("change",()=>{syncDesktopSelectionsFromMobile();syncMobileUI();}));
-scaleMobile.addEventListener("click",()=>scaleBtn.click());
-originMobile.addEventListener("click",()=>originBtn.click());
+scaleMobile.addEventListener("click",()=>{ if(typeof scaleBtn.onclick==="function") scaleBtn.onclick(); syncMobileUI(); });
+originMobile.addEventListener("click",()=>{ if(typeof originBtn.onclick==="function") originBtn.onclick(); syncMobileUI(); });
 recordMobile.addEventListener("click",()=>{syncDesktopSelectionsFromMobile();startBtn.click();syncMobileUI();});
 finishExportMobile.addEventListener("click",()=>{
  recording=false;mode="";[collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
@@ -834,7 +856,7 @@ finishExportMobile.addEventListener("click",()=>{
  else alert("No hay datos registrados para exportar.");
  syncMobileUI();
 });
-window.addEventListener("resize",()=>{moveStageForLayout();syncMobileUI();});
+window.addEventListener("resize",()=>{placeSharedPopup();moveStageForLayout();syncMobileUI();});
 fileInput.addEventListener("change",()=>setTimeout(()=>{moveStageForLayout();syncMobileUI();},0));
 moveStageForLayout();syncMobileUI();
 
@@ -1097,6 +1119,11 @@ gridChk.addEventListener("change",draw);
 
 
 
+function placeSharedPopup(){
+  if(scalePopup && scalePopup.parentElement!==document.body){
+    document.body.appendChild(scalePopup);
+  }
+}
 function isMobileLayout(){return window.matchMedia("(max-width:700px)").matches;}
 function syncDesktopSelectionsFromMobile(){
  collectTime.checked=collectTimeMobile.checked; collectPixelX.checked=collectPixelXMobile.checked;
@@ -1244,7 +1271,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v9.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v9_3.xlsx");
 };
 </script>
 </body>
