@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v9.8</title>
+<title>Rastreador de Movimiento v10.0</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -677,6 +677,19 @@ body.darkMode .dataChoice{
   }
 }
 
+
+/* ===== v10.0 — reproducción en PC y smartphone ===== */
+.playbackControls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.compactFrame{min-width:48px!important;width:48px;padding-left:8px!important;padding-right:8px!important}
+.playPauseBtn{min-width:130px;font-weight:750;background:var(--uc-wizard,#0072E5)!important;border-color:var(--uc-wizard,#0072E5)!important;color:#fff!important}
+.playPauseBtn[aria-pressed="true"]{background:var(--uc-oxford,#002147)!important;border-color:var(--uc-oxford,#002147)!important}
+@media(max-width:700px){
+ #mobileUI .row4{grid-template-columns:56px minmax(0,1fr) 56px!important;gap:8px}
+ #prevFrameMobile,#nextFrameMobile{min-width:0!important;width:56px!important;padding:7px 5px!important;font-size:15px;font-weight:750}
+ #playPauseMobile{min-width:0!important;min-height:48px;font-size:16px;font-weight:800;background:var(--uc-wizard,#0072E5)!important;border-color:var(--uc-wizard,#0072E5)!important;color:#fff!important}
+ #playPauseMobile[aria-pressed="true"]{background:var(--uc-oxford,#002147)!important;border-color:var(--uc-oxford,#002147)!important;color:#fff!important}
+}
+
 </style>
 </head>
 <body>
@@ -692,8 +705,9 @@ body.darkMode .dataChoice{
     <button id="gridMobile" class="gridOff" aria-pressed="false">▦ CUADRÍCULA</button>
   </div>
   <div class="mobileRow row4">
-    <button id="prevFrameMobile">◀ −1 frame</button>
-    <button id="nextFrameMobile">+1 frame ▶</button>
+    <button id="prevFrameMobile" aria-label="Retroceder un frame">−1</button>
+    <button id="playPauseMobile" aria-label="Reproducir video" aria-pressed="false">▶ PLAY</button>
+    <button id="nextFrameMobile" aria-label="Avanzar un frame">+1</button>
   </div>
   <div class="mobileRow row5">
     <input type="range" id="seekRangeMobile" min="0" max="0" value="0" step="1">
@@ -737,7 +751,7 @@ body.darkMode .dataChoice{
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v9.8</h2>
+<h2>Rastreador de Movimiento v10.0</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -752,9 +766,10 @@ FPS <input type="number" id="fps" value="30" min="1" step="any">
 </div>
 
 <div class="panel">
-  <div class="videoControls">
-    <button type="button" id="prevFrame" class="frameBtn">◀ −1 frame</button>
-    <button type="button" id="nextFrame" class="frameBtn">+1 frame ▶</button>
+  <div class="videoControls playbackControls">
+    <button type="button" id="prevFrame" class="frameBtn compactFrame" aria-label="Retroceder un frame">−1</button>
+    <button type="button" id="playPauseBtn" class="playPauseBtn" aria-label="Reproducir video" aria-pressed="false">▶ PLAY</button>
+    <button type="button" id="nextFrame" class="frameBtn compactFrame" aria-label="Avanzar un frame">+1</button>
     <span id="frameLabel">Frame 0</span>
     <input type="range" id="seekRange" min="0" max="0" step="1" value="0" aria-label="Buscar frame">
   </div>
@@ -853,6 +868,7 @@ const resetMobile=document.getElementById("resetMobile");
 const gridMobile=document.getElementById("gridMobile");
 const prevFrameMobile=document.getElementById("prevFrameMobile");
 const nextFrameMobile=document.getElementById("nextFrameMobile");
+const playPauseMobile=document.getElementById("playPauseMobile");
 const seekRangeMobile=document.getElementById("seekRangeMobile");
 const frameLabelMobile=document.getElementById("frameLabelMobile");
 const mobileVideoHost=document.getElementById("mobileVideoHost");
@@ -881,6 +897,7 @@ const zoomIn=document.getElementById("zoomIn");
 const zoomReset=document.getElementById("zoomReset");
 const prevFrame=document.getElementById("prevFrame");
 const nextFrame=document.getElementById("nextFrame");
+const playPauseBtn=document.getElementById("playPauseBtn");
 const seekRange=document.getElementById("seekRange");
 const frameLabel=document.getElementById("frameLabel");
 const rotateBtn=document.getElementById("rotateBtn");
@@ -900,8 +917,7 @@ const startBtnMobile=document.getElementById("startBtnMobile");
 canvas=document.getElementById("displayCanvas");
 ctx=canvas.getContext("2d");
 
-fileInput.onchange=e=>{
- const f=e.target.files[0];
+function loadVideoFile(f){
  if(!f) return;
  if(objectUrl) URL.revokeObjectURL(objectUrl);
  objectUrl=URL.createObjectURL(f);
@@ -910,6 +926,19 @@ fileInput.onchange=e=>{
  video.muted=true;
  video.preload="auto";
  video.playsInline=true;
+ video.addEventListener("play",syncPlaybackButtons);
+ video.addEventListener("pause",syncPlaybackButtons);
+ video.addEventListener("ended",syncPlaybackButtons);
+ video.addEventListener("timeupdate",()=>{
+   if(!video || video.paused) return;
+   fps=getFPS();
+   currentFrame=Math.max(0,Math.min(Math.max(0,totalFrames-1),Math.round(video.currentTime*fps)));
+   seekRange.value=currentFrame;
+   frameLabel.textContent=`Frame ${currentFrame}`;
+   draw();
+   if(typeof syncMobileUI==="function") syncMobileUI();
+ });
+ syncPlaybackButtons();
  rotation=0;
  currentFrame=0;
  recording=false;
@@ -933,7 +962,15 @@ fileInput.onchange=e=>{
  };
  video.onseeked=()=>draw();
  video.onloadeddata=()=>draw();
-};
+}
+
+
+fileInput.addEventListener("change",(e)=>{
+  loadVideoFile(e.target.files && e.target.files[0]);
+});
+fileInputMobile.addEventListener("change",(e)=>{
+  loadVideoFile(e.target.files && e.target.files[0]);
+});
 
 function getFPS(){
   return Math.max(1,parseFloat(fpsInput.value)||30);
@@ -1053,16 +1090,41 @@ function seekToFrame(target){
   if(Math.abs(video.currentTime-t)>0.000001) video.currentTime=t;
   else draw();
 }
+
+function syncPlaybackButtons(){
+  if(!video) {
+    playPauseBtn.textContent="▶ PLAY";
+    playPauseMobile.textContent="▶ PLAY";
+    return;
+  }
+  const playing=!video.paused && !video.ended;
+  [playPauseBtn,playPauseMobile].forEach(btn=>{
+    if(!btn) return;
+    btn.textContent=playing ? "⏸ PAUSAR" : "▶ PLAY";
+    btn.setAttribute("aria-pressed",playing ? "true" : "false");
+    btn.setAttribute("aria-label",playing ? "Pausar video" : "Reproducir video");
+  });
+}
+
+async function togglePlayback(){
+  if(!video) return;
+  if(video.paused || video.ended){
+    try{ await video.play(); }catch(err){ console.warn("No se pudo reproducir el video:",err); }
+  }else{
+    video.pause();
+  }
+  syncPlaybackButtons();
+}
+
+playPauseBtn.addEventListener("click",togglePlayback);
+playPauseMobile.addEventListener("click",togglePlayback);
+
 prevFrame.addEventListener("click",()=>seekToFrame(currentFrame-1));
 nextFrame.addEventListener("click",()=>seekToFrame(currentFrame+1));
 seekRange.addEventListener("input",()=>seekToFrame(Number(seekRange.value)));
 
 
 themeToggleMobile.addEventListener("click",()=>themeToggleBtn.click());
-fileInputMobile.addEventListener("change",()=>{
- if(!fileInputMobile.files||!fileInputMobile.files[0])return;
- const dt=new DataTransfer();dt.items.add(fileInputMobile.files[0]);fileInput.files=dt.files;fileInput.dispatchEvent(new Event("change"));
-});
 fpsMobile.addEventListener("input",()=>{fpsInput.value=fpsMobile.value;});
 resetMobile.addEventListener("click",()=>resetAllBtn.click());
 gridMobile.addEventListener("click",()=>{gridChk.checked=!gridChk.checked;gridChk.dispatchEvent(new Event("change"));syncMobileUI();});
@@ -1643,7 +1705,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v9_8.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_0.xlsx");
 };
 </script>
 </body>
