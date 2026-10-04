@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.0</title>
+<title>Rastreador de Movimiento v10.1</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -690,6 +690,46 @@ body.darkMode .dataChoice{
  #playPauseMobile[aria-pressed="true"]{background:var(--uc-oxford,#002147)!important;border-color:var(--uc-oxford,#002147)!important;color:#fff!important}
 }
 
+
+/* ===== v10.1 — Tiempo² y visualización de datos ===== */
+.chartViewer{
+  max-width:1100px;
+  margin:18px auto 30px;
+  padding:16px;
+  border:1px solid var(--uc-silver,#90ABC4);
+  border-radius:16px;
+  background:#fff;
+}
+.chartViewerHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.chartViewer h3{margin:0 0 5px;color:var(--uc-oxford,#002147)}
+#showChartsBtn{background:var(--uc-wizard,#0072E5);border-color:var(--uc-wizard,#0072E5);color:#fff;font-weight:750}
+.chartMessage{margin-top:12px;padding:11px 12px;border:1px dashed var(--uc-silver,#90ABC4);border-radius:10px}
+.chartsContainer{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.chartCard{min-width:0;border:1px solid #D7E0E8;border-radius:14px;padding:12px;background:#fff}
+.chartCard h4{margin:0 0 8px;text-align:center;color:var(--uc-oxford,#002147);font-size:16px}
+.dataChartSvg{display:block;width:100%;height:auto;min-height:250px}
+.chartGrid{stroke:#DCE3EA;stroke-width:1}
+.chartAxis{stroke:#5F6B76;stroke-width:1.5}
+.chartLine{fill:none;stroke:#0072E5;stroke-width:2}
+.chartPoint{fill:#004680;stroke:#fff;stroke-width:1.5}
+.chartTick{fill:#52606D;font-size:12px}
+.chartAxisLabel{fill:#25313C;font-size:13px;font-weight:650}
+body.darkMode .chartViewer,body.darkMode .chartCard{background:#17212B;border-color:#526273}
+body.darkMode .chartViewer h3,body.darkMode .chartCard h4{color:#F6EFE0}
+body.darkMode .chartMessage{border-color:#607386;color:#E5EAF0}
+body.darkMode .chartGrid{stroke:#344554}
+body.darkMode .chartAxis{stroke:#A9B7C4}
+body.darkMode .chartTick,body.darkMode .chartAxisLabel{fill:#DDE5EC}
+body.darkMode .chartPoint{stroke:#17212B}
+@media(max-width:700px){
+ .chartViewer{margin:14px 10px 24px;padding:12px;border-radius:14px}
+ .chartViewerHeader{display:block}
+ #showChartsBtn{width:100%;margin-top:10px;min-height:48px}
+ .chartsContainer{grid-template-columns:1fr;gap:12px}
+ .chartCard{padding:8px}
+ .dataChartSvg{min-height:220px}
+}
+
 </style>
 </head>
 <body>
@@ -741,6 +781,7 @@ body.darkMode .dataChoice{
       <div class="hint">Seleccione las variables antes de iniciar el registro. El número de frame se incluye automáticamente.</div>
       <div class="dataSelect mobileDataSelect">
         <label class="dataChoice"><input type="checkbox" id="collectTimeMobile" checked> Tiempo (s)</label>
+        <label class="dataChoice"><input type="checkbox" id="collectTime2Mobile" checked> Tiempo² (s²)</label>
         <label class="dataChoice"><input type="checkbox" id="collectPixelXMobile" checked> Posición X (px)</label>
         <label class="dataChoice"><input type="checkbox" id="collectPixelYMobile" checked> Posición Y (px)</label>
         <label class="dataChoice"><input type="checkbox" id="collectRealXMobile" checked> Posición X (unidad)</label>
@@ -751,7 +792,7 @@ body.darkMode .dataChoice{
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.0</h2>
+<h2>Rastreador de Movimiento v10.1</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -813,6 +854,7 @@ FPS <input type="number" id="fps" value="30" min="1" step="any">
   <div class="hint">Seleccione las variables antes de iniciar el registro. El número de frame se incluye automáticamente.</div>
   <div class="dataSelect">
     <label class="dataChoice"><input type="checkbox" id="collectTime" checked> Tiempo (s)</label>
+    <label class="dataChoice"><input type="checkbox" id="collectTime2" checked> Tiempo² (s²)</label>
     <label class="dataChoice"><input type="checkbox" id="collectPixelX" checked> Posición X (px)</label>
     <label class="dataChoice"><input type="checkbox" id="collectPixelY" checked> Posición Y (px)</label>
     <label class="dataChoice"><input type="checkbox" id="collectRealX" checked> Posición X (unidad)</label>
@@ -830,7 +872,21 @@ FPS <input type="number" id="fps" value="30" min="1" step="any">
 </div>
 
 
+
 </div>
+
+<section id="chartViewer" class="chartViewer" aria-labelledby="chartViewerTitle">
+  <div class="chartViewerHeader">
+    <div>
+      <h3 id="chartViewerTitle">Visualización de datos</h3>
+      <p class="hint">Muestra las variables de posición seleccionadas en función del tiempo. Es una vista rápida; no calcula ajustes ni ecuaciones.</p>
+    </div>
+    <button type="button" id="showChartsBtn">📈 VISUALIZAR GRÁFICOS</button>
+  </div>
+  <div id="chartMessage" class="chartMessage">Registre datos y presione “Visualizar gráficos”.</div>
+  <div id="chartsContainer" class="chartsContainer"></div>
+</section>
+
 <script>
 let video,canvas,ctx;
 let mode="";
@@ -879,6 +935,7 @@ const zoomLabelMobile=document.getElementById("zoomLabelMobile");
 const rotateMobile=document.getElementById("rotateMobile");
 const rotationLabelMobile=document.getElementById("rotationLabelMobile");
 const collectTimeMobile=document.getElementById("collectTimeMobile");
+const collectTime2Mobile=document.getElementById("collectTime2Mobile");
 const collectPixelXMobile=document.getElementById("collectPixelXMobile");
 const collectPixelYMobile=document.getElementById("collectPixelYMobile");
 const collectRealXMobile=document.getElementById("collectRealXMobile");
@@ -904,8 +961,12 @@ const rotateBtn=document.getElementById("rotateBtn");
 const rotationLabel=document.getElementById("rotationLabel");
 const statusEl=document.getElementById("status");
 const modeIndicator=document.getElementById("modeIndicator");
+const showChartsBtn=document.getElementById("showChartsBtn");
+const chartsContainer=document.getElementById("chartsContainer");
+const chartMessage=document.getElementById("chartMessage");
 
 const collectTime=document.getElementById("collectTime");
+const collectTime2=document.getElementById("collectTime2");
 const collectPixelX=document.getElementById("collectPixelX");
 const collectPixelY=document.getElementById("collectPixelY");
 const collectRealX=document.getElementById("collectRealX");
@@ -942,7 +1003,7 @@ function loadVideoFile(f){
  rotation=0;
  currentFrame=0;
  recording=false;
- [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
+ [collectTime,collectTime2,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
  data=[];
  origin=null;
  scaleFactor=null;
@@ -1135,12 +1196,12 @@ zoomOutMobile.addEventListener("click",()=>{zoomOut.click();recenterViewportIfNe
 zoomInMobile.addEventListener("click",()=>{zoomIn.click();recenterViewportIfNeeded();syncMobileUI();});
 zoomRangeMobile.addEventListener("input",()=>{zoomRange.value=zoomRangeMobile.value;zoomRange.dispatchEvent(new Event("input"));recenterViewportIfNeeded();});
 rotateMobile.addEventListener("click",()=>{rotateBtn.click();syncMobileUI();});
-[collectTimeMobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile].forEach(el=>el.addEventListener("change",()=>{syncDesktopSelectionsFromMobile();syncMobileUI();}));
+[collectTimeMobile,collectTime2Mobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile].forEach(el=>el.addEventListener("change",()=>{syncDesktopSelectionsFromMobile();syncMobileUI();}));
 scaleMobile.addEventListener("click",()=>{ if(typeof scaleBtn.onclick==="function") scaleBtn.onclick(); syncMobileUI(); });
 originMobile.addEventListener("click",()=>{ if(typeof originBtn.onclick==="function") originBtn.onclick(); syncMobileUI(); });
 recordMobile.addEventListener("click",()=>{syncDesktopSelectionsFromMobile();startBtn.click();syncMobileUI();});
 finishExportMobile.addEventListener("click",()=>{
- recording=false;mode="";[collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
+ recording=false;mode="";[collectTime,collectTime2,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=false);
  setButtonStates();modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
  if(data.length){exportBtn.click();statusEl.innerHTML="<strong>Estado:</strong> Registro finalizado y datos exportados.";}
  else alert("No hay datos registrados para exportar.");
@@ -1274,7 +1335,8 @@ function clickCanvas(e){
  if(recording){
    const xr=(x-origin.x)*scaleFactor;
    const yr=(origin.y-y)*scaleFactor;
-   data.push({frame:currentFrame,time:currentFrame/fps,xr,yr,xp:x,yp:y});
+   const time=currentFrame/fps;
+   data.push({frame:currentFrame,time,time2:time*time,xr,yr,xp:x,yp:y});
    renderTable();
    draw();
    seekToFrame(currentFrame+1);
@@ -1330,7 +1392,7 @@ function enableStart(){
 
 startBtn.onclick=()=>{
  if(startBtn.disabled) return;
- if(![collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].some(el=>el.checked)){
+ if(![collectTime,collectTime2,collectPixelX,collectPixelY,collectRealX,collectRealY].some(el=>el.checked)){
    alert("Seleccione al menos una variable para exportar.");
    return;
  }
@@ -1339,7 +1401,7 @@ startBtn.onclick=()=>{
  hideScalePopup();
  data=[];
  recording=true;
- [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=true);
+ [collectTime,collectTime2,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>el.disabled=true);
  setButtonStates();
  renderTable();
  modeIndicator.innerHTML="<strong>Modo:</strong> REGISTRO ACTIVO";
@@ -1560,12 +1622,12 @@ function placeSharedPopup(){
 }
 function isMobileLayout(){return window.matchMedia("(max-width:700px)").matches;}
 function syncDesktopSelectionsFromMobile(){
- collectTime.checked=collectTimeMobile.checked; collectPixelX.checked=collectPixelXMobile.checked;
+ collectTime.checked=collectTimeMobile.checked; collectTime2.checked=collectTime2Mobile.checked; collectPixelX.checked=collectPixelXMobile.checked;
  collectPixelY.checked=collectPixelYMobile.checked; collectRealX.checked=collectRealXMobile.checked; collectRealY.checked=collectRealYMobile.checked;
 }
 function syncMobileSelections(){
- const a=[collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY];
- const b=[collectTimeMobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile];
+ const a=[collectTime,collectTime2,collectPixelX,collectPixelY,collectRealX,collectRealY];
+ const b=[collectTimeMobile,collectTime2Mobile,collectPixelXMobile,collectPixelYMobile,collectRealXMobile,collectRealYMobile];
  b.forEach((el,i)=>{el.checked=a[i].checked;el.disabled=a[i].disabled;});
 }
 function syncMobileUI(){
@@ -1652,7 +1714,7 @@ function resetAll(){
   unitSelect.value="m";
   gridChk.checked=false;
 
-  [collectTime,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>{
+  [collectTime,collectTime2,collectPixelX,collectPixelY,collectRealX,collectRealY].forEach(el=>{
     el.disabled=false;
     el.checked=true;
   });
@@ -1681,9 +1743,111 @@ function resetAll(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   renderTable();
+  if(chartsContainer) chartsContainer.replaceChildren();
+  if(chartMessage){chartMessage.hidden=false;chartMessage.textContent='Registre datos y presione “Visualizar gráficos”.';}
 }
 
 resetAllBtn.addEventListener("click",resetAll);
+
+
+function formatChartNumber(v){
+  if(!Number.isFinite(v)) return "";
+  const a=Math.abs(v);
+  if(a!==0 && (a>=10000 || a<0.001)) return v.toExponential(2);
+  return Number(v.toFixed(3)).toString();
+}
+
+function createPositionChart(title,yLabel,key){
+  const valid=data.filter(d=>Number.isFinite(d.time)&&Number.isFinite(d[key]));
+  if(!valid.length) return null;
+
+  const W=720,H=360,ml=72,mr=24,mt=38,mb=58;
+  let xmin=Math.min(...valid.map(d=>d.time)), xmax=Math.max(...valid.map(d=>d.time));
+  let ymin=Math.min(...valid.map(d=>d[key])), ymax=Math.max(...valid.map(d=>d[key]));
+  if(xmin===xmax){xmin-=0.5;xmax+=0.5}
+  if(ymin===ymax){const pad=Math.abs(ymin)*0.1||1;ymin-=pad;ymax+=pad}
+  const ypad=(ymax-ymin)*0.08; ymin-=ypad;ymax+=ypad;
+  const sx=x=>ml+(x-xmin)/(xmax-xmin)*(W-ml-mr);
+  const sy=y=>mt+(ymax-y)/(ymax-ymin)*(H-mt-mb);
+  const NS="http://www.w3.org/2000/svg";
+  const svg=document.createElementNS(NS,"svg");
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  svg.setAttribute("role","img");
+  svg.setAttribute("aria-label",`${title}. ${valid.length} puntos registrados.`);
+  svg.classList.add("dataChartSvg");
+
+  const add=(name,attrs,text)=>{
+    const el=document.createElementNS(NS,name);
+    Object.entries(attrs||{}).forEach(([k,v])=>el.setAttribute(k,v));
+    if(text!==undefined) el.textContent=text;
+    svg.appendChild(el); return el;
+  };
+
+  for(let i=0;i<=5;i++){
+    const x=ml+i*(W-ml-mr)/5, xv=xmin+i*(xmax-xmin)/5;
+    add("line",{x1:x,y1:mt,x2:x,y2:H-mb,class:"chartGrid"});
+    add("text",{x,y:H-mb+24,"text-anchor":"middle",class:"chartTick"},formatChartNumber(xv));
+  }
+  for(let i=0;i<=5;i++){
+    const y=mt+i*(H-mt-mb)/5, yv=ymax-i*(ymax-ymin)/5;
+    add("line",{x1:ml,y1:y,x2:W-mr,y2:y,class:"chartGrid"});
+    add("text",{x:ml-10,y:y+4,"text-anchor":"end",class:"chartTick"},formatChartNumber(yv));
+  }
+  add("line",{x1:ml,y1:H-mb,x2:W-mr,y2:H-mb,class:"chartAxis"});
+  add("line",{x1:ml,y1:mt,x2:ml,y2:H-mb,class:"chartAxis"});
+  add("text",{x:W/2,y:H-12,"text-anchor":"middle",class:"chartAxisLabel"},"Tiempo (s)");
+  const yl=add("text",{x:18,y:H/2,"text-anchor":"middle",class:"chartAxisLabel"},yLabel);
+  yl.setAttribute("transform",`rotate(-90 18 ${H/2})`);
+
+  if(valid.length>1){
+    add("polyline",{points:valid.map(d=>`${sx(d.time)},${sy(d[key])}`).join(" "),class:"chartLine"});
+  }
+  valid.forEach(d=>{
+    const c=add("circle",{cx:sx(d.time),cy:sy(d[key]),r:4,class:"chartPoint"});
+    const tt=document.createElementNS(NS,"title");
+    tt.textContent=`t = ${formatChartNumber(d.time)} s; ${yLabel} = ${formatChartNumber(d[key])}`;
+    c.appendChild(tt);
+  });
+  return svg;
+}
+
+function renderSelectedCharts(){
+  chartsContainer.replaceChildren();
+  if(!data.length){
+    chartMessage.textContent="No hay datos registrados para visualizar.";
+    chartMessage.hidden=false;
+    return;
+  }
+  if(!collectTime.checked){
+    chartMessage.textContent="Seleccione “Tiempo (s)” para visualizar variables de posición versus tiempo.";
+    chartMessage.hidden=false;
+    return;
+  }
+  const specs=[];
+  if(collectPixelX.checked) specs.push(["Posición X (px) vs. Tiempo","Posición X (px)","xp"]);
+  if(collectPixelY.checked) specs.push(["Posición Y (px) vs. Tiempo","Posición Y (px)","yp"]);
+  if(collectRealX.checked) specs.push([`Posición X (${unit}) vs. Tiempo`,`Posición X (${unit})`,"xr"]);
+  if(collectRealY.checked) specs.push([`Posición Y (${unit}) vs. Tiempo`,`Posición Y (${unit})`,"yr"]);
+  if(!specs.length){
+    chartMessage.textContent="Seleccione al menos una variable de posición para visualizarla versus tiempo.";
+    chartMessage.hidden=false;
+    return;
+  }
+  chartMessage.hidden=true;
+  specs.forEach(([title,label,key])=>{
+    const card=document.createElement("article");
+    card.className="chartCard";
+    const h4=document.createElement("h4"); h4.textContent=title; card.appendChild(h4);
+    const svg=createPositionChart(title,label,key);
+    if(svg) card.appendChild(svg);
+    chartsContainer.appendChild(card);
+  });
+  document.getElementById("chartViewer").scrollIntoView({behavior:"smooth",block:"start"});
+}
+showChartsBtn.addEventListener("click",()=>{
+  if(isMobileLayout()) syncDesktopSelectionsFromMobile();
+  renderSelectedCharts();
+});
 
 exportBtn.onclick=()=>{
   if(!data.length){
@@ -1693,6 +1857,7 @@ exportBtn.onclick=()=>{
 
   const columns=[{key:"frame",label:"Frame"}];
   if(collectTime.checked) columns.push({key:"time",label:"Tiempo (s)"});
+  if(collectTime2.checked) columns.push({key:"time2",label:"Tiempo² (s²)"});
   if(collectPixelX.checked) columns.push({key:"xp",label:"Posición X (px)"});
   if(collectPixelY.checked) columns.push({key:"yp",label:"Posición Y (px)"});
   if(collectRealX.checked) columns.push({key:"xr",label:`Posición X (${unit})`});
@@ -1705,7 +1870,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_0.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_1.xlsx");
 };
 </script>
 </body>
