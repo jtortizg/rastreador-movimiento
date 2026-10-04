@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.2</title>
+<title>Rastreador de Movimiento v10.3</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -730,6 +730,26 @@ body.darkMode .chartPoint{stroke:#17212B}
  .dataChartSvg{min-height:220px}
 }
 
+
+/* ===== v10.3 — FPS automático/manual ===== */
+.fpsModeLabel,#fpsModeMobile{
+  display:inline-block;padding:4px 7px;border-radius:999px;
+  font-size:11px;font-weight:800;letter-spacing:.02em;
+  background:#E8EEF4;color:#33485C;white-space:nowrap;
+}
+#fpsAutoBtn,#fpsAutoMobile{font-weight:800}
+#fpsAutoBtn.fpsAutoActive,#fpsAutoMobile.fpsAutoActive{
+  background:var(--uc-mint,#00DB9D);border-color:var(--uc-mint,#00DB9D);color:#002147;
+}
+.fpsBox{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.fpsBox input{min-width:64px;flex:1}
+#fpsAutoMobile{min-width:58px}
+body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;color:#E8EEF4}
+@media(max-width:700px){
+ .fpsBox{display:grid;grid-template-columns:auto minmax(62px,1fr) auto;align-items:center}
+ #fpsModeMobile{grid-column:2/4;justify-self:end;margin-top:-2px}
+}
+
 </style>
 </head>
 <body>
@@ -738,7 +758,7 @@ body.darkMode .chartPoint{stroke:#17212B}
   <div class="mobileRow row1"><button id="themeToggleMobile">🌙 Modo nocturno</button></div>
   <div class="mobileRow row2">
     <input type="file" id="fileInputMobile" accept="video/*">
-    <div class="fpsBox"><span>FPS</span><input type="number" id="fpsMobile" value="30" min="1" step="1"></div>
+    <div class="fpsBox"><span>FPS</span><input type="number" id="fpsMobile" value="30" min="1" step="any"><button type="button" id="fpsAutoMobile">AUTO</button><small id="fpsModeMobile">AUTO</small></div>
   </div>
   <div class="mobileRow row3">
     <button id="resetMobile">↺ RESET</button>
@@ -792,11 +812,11 @@ body.darkMode .chartPoint{stroke:#17212B}
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.2</h2>
+<h2>Rastreador de Movimiento v10.3</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
-FPS <input type="number" id="fps" value="30" min="1" step="any">
+FPS <input type="number" id="fps" value="30" min="1" step="any"> <button type="button" id="fpsAutoBtn">AUTO</button> <span id="fpsModeLabel" class="fpsModeLabel">AUTO</span>
 <button id="scaleBtn">Definir escala</button>
 <button id="originBtn">Definir origen</button>
 <label><input type="checkbox" id="gridChk"> Mostrar cuadrícula</label>
@@ -889,6 +909,9 @@ FPS <input type="number" id="fps" value="30" min="1" step="any">
 
 <script>
 let video,canvas,ctx;
+let fpsMode="auto";
+let detectedFPS=null;
+let fpsDetectionToken=0;
 let mode="";
 let scalePts=[];
 let origin=null;
@@ -905,6 +928,8 @@ let objectUrl=null;
 
 const fileInput=document.getElementById("fileInput");
 const fpsInput=document.getElementById("fps");
+const fpsAutoBtn=document.getElementById("fpsAutoBtn");
+const fpsModeLabel=document.getElementById("fpsModeLabel");
 const scaleBtn=document.getElementById("scaleBtn");
 const realDist=document.getElementById("realDist");
 const unitSelect=document.getElementById("unit");
@@ -920,6 +945,8 @@ const themeToggleBtn=document.getElementById("themeToggleBtn");
 const themeToggleMobile=document.getElementById("themeToggleMobile");
 const fileInputMobile=document.getElementById("fileInputMobile");
 const fpsMobile=document.getElementById("fpsMobile");
+const fpsAutoMobile=document.getElementById("fpsAutoMobile");
+const fpsModeMobile=document.getElementById("fpsModeMobile");
 const resetMobile=document.getElementById("resetMobile");
 const gridMobile=document.getElementById("gridMobile");
 const prevFrameMobile=document.getElementById("prevFrameMobile");
@@ -1011,15 +1038,20 @@ function loadVideoFile(f){
  startBtn.disabled=true;
  renderTable();
  updateRotation();
- video.onloadedmetadata=()=>{
-   fps=getFPS();
-   totalFrames=Math.max(1,Math.floor(video.duration*fps));
-   seekRange.max=Math.max(0,totalFrames-1);
-   seekRange.value=0;
+ video.onloadedmetadata=async()=>{
    updateCanvasGeometry();
    setZoom(1);
+   setFPSMode("auto");
+   statusEl.innerHTML="<strong>Estado:</strong> Video cargado. Detectando FPS automáticamente…";
+   await detectVideoFPS(video);
+   if(!video) return;
+   applyFPSGeometry();
    seekToFrame(0);
-   statusEl.innerHTML="<strong>Estado:</strong> Video cargado. Puede navegar, definir escala y origen.";
+   if(fpsMode==="auto" && detectedFPS){
+     statusEl.innerHTML=`<strong>Estado:</strong> Video cargado. FPS detectados: ${formatFPS(detectedFPS)} (AUTO). Puede cambiarlos manualmente si es necesario.`;
+   }else if(fpsMode==="auto"){
+     statusEl.innerHTML="<strong>Estado:</strong> No fue posible detectar los FPS con fiabilidad. Se mantiene 30 FPS como respaldo; puede introducir el valor manualmente.";
+   }
  };
  video.onseeked=()=>draw();
  video.onloadeddata=()=>draw();
@@ -1033,19 +1065,142 @@ fileInputMobile.addEventListener("change",(e)=>{
   loadVideoFile(e.target.files && e.target.files[0]);
 });
 
+function formatFPS(v){
+  if(!Number.isFinite(v)) return "—";
+  return Number(v.toFixed(3)).toString().replace(".",",");
+}
+function normalizeDetectedFPS(raw){
+  const standards=[23.976,24,25,29.97,30,48,50,59.94,60,90,100,119.88,120,144,200,239.76,240];
+  let best=raw, diff=Infinity;
+  for(const s of standards){
+    const d=Math.abs(raw-s);
+    if(d<diff){diff=d;best=s;}
+  }
+  return diff<=Math.max(0.35,best*0.008) ? best : raw;
+}
 function getFPS(){
   return Math.max(1,parseFloat(fpsInput.value)||30);
 }
-
-fpsInput.addEventListener("change",()=>{
+function updateFPSIndicators(){
+  const label=fpsMode==="auto" ? (detectedFPS ? `AUTO · ${formatFPS(detectedFPS)} FPS` : "AUTO") : "MANUAL";
+  fpsModeLabel.textContent=label;
+  fpsModeMobile.textContent=label;
+  fpsAutoBtn.classList.toggle("fpsAutoActive",fpsMode==="auto");
+  fpsAutoMobile.classList.toggle("fpsAutoActive",fpsMode==="auto");
+}
+function setFPSValue(v){
+  if(!Number.isFinite(v)||v<=0) return;
+  const shown=Number(v.toFixed(3));
+  fpsInput.value=shown;
+  fpsMobile.value=shown;
+  fps=shown;
+}
+function setFPSMode(mode){
+  fpsMode=mode;
+  if(mode==="auto") detectedFPS=null;
+  updateFPSIndicators();
+}
+function applyFPSGeometry(){
   fps=getFPS();
   if(video && Number.isFinite(video.duration)){
-    totalFrames=Math.max(1,Math.floor(video.duration*fps));
+    totalFrames=Math.max(1,Math.round(video.duration*fps));
     seekRange.max=Math.max(0,totalFrames-1);
     currentFrame=Math.min(currentFrame,totalFrames-1);
-    seekToFrame(currentFrame);
+    seekRange.value=currentFrame;
+    frameLabel.textContent=`Frame ${currentFrame}`;
+    if(typeof syncMobileUI==="function") syncMobileUI();
   }
-});
+}
+async function detectVideoFPS(targetVideo){
+  const token=++fpsDetectionToken;
+  if(!targetVideo || typeof targetVideo.requestVideoFrameCallback!=="function"){
+    setFPSValue(30); updateFPSIndicators(); return null;
+  }
+  const wasPaused=targetVideo.paused;
+  const oldTime=targetVideo.currentTime||0;
+  const samples=[];
+  let lastMediaTime=null;
+  let callbackId=null;
+  let timer=null;
+
+  const cleanup=()=>{
+    if(timer) clearTimeout(timer);
+    if(callbackId!==null && typeof targetVideo.cancelVideoFrameCallback==="function"){
+      try{targetVideo.cancelVideoFrameCallback(callbackId);}catch(e){}
+    }
+  };
+
+  const result=await new Promise(async resolve=>{
+    const finish=()=>{
+      cleanup();
+      if(samples.length<6){ resolve(null); return; }
+      const sorted=samples.slice().sort((a,b)=>a-b);
+      const trim=sorted.length>=10 ? sorted.slice(1,-1) : sorted;
+      const median=trim[Math.floor(trim.length/2)];
+      resolve(median>0 ? normalizeDetectedFPS(1/median) : null);
+    };
+    const cb=(now,meta)=>{
+      if(token!==fpsDetectionToken){cleanup();resolve(null);return;}
+      if(lastMediaTime!==null){
+        const dt=meta.mediaTime-lastMediaTime;
+        if(dt>0.001 && dt<0.2) samples.push(dt);
+      }
+      lastMediaTime=meta.mediaTime;
+      if(samples.length>=18){finish();return;}
+      callbackId=targetVideo.requestVideoFrameCallback(cb);
+    };
+    callbackId=targetVideo.requestVideoFrameCallback(cb);
+    timer=setTimeout(finish,1800);
+    try{
+      targetVideo.muted=true;
+      await targetVideo.play();
+    }catch(e){
+      cleanup(); resolve(null);
+    }
+  });
+
+  if(token!==fpsDetectionToken) return null;
+  try{targetVideo.pause(); targetVideo.currentTime=oldTime;}catch(e){}
+  if(!wasPaused){
+    try{await targetVideo.play();}catch(e){}
+  }
+  if(result && Number.isFinite(result)){
+    detectedFPS=result;
+    if(fpsMode==="auto") setFPSValue(result);
+  }else if(fpsMode==="auto"){
+    detectedFPS=null;
+    setFPSValue(30);
+  }
+  updateFPSIndicators();
+  return result;
+}
+
+function setManualFPS(v){
+  const n=Math.max(1,parseFloat(v)||30);
+  fpsDetectionToken++;
+  setFPSMode("manual");
+  setFPSValue(n);
+  applyFPSGeometry();
+  if(video) seekToFrame(currentFrame);
+}
+fpsInput.addEventListener("change",()=>setManualFPS(fpsInput.value));
+fpsMobile.addEventListener("change",()=>setManualFPS(fpsMobile.value));
+
+async function returnToAutoFPS(){
+  if(!video){
+    setFPSMode("auto"); setFPSValue(30); updateFPSIndicators(); return;
+  }
+  setFPSMode("auto");
+  statusEl.innerHTML="<strong>Estado:</strong> Detectando FPS automáticamente…";
+  const found=await detectVideoFPS(video);
+  applyFPSGeometry();
+  seekToFrame(currentFrame);
+  statusEl.innerHTML=found
+    ? `<strong>Estado:</strong> FPS detectados: ${formatFPS(found)} (AUTO).`
+    : "<strong>Estado:</strong> No fue posible detectar FPS con fiabilidad. Se mantiene 30 FPS como respaldo.";
+}
+fpsAutoBtn.addEventListener("click",returnToAutoFPS);
+fpsAutoMobile.addEventListener("click",returnToAutoFPS);
 
 function updateCanvasGeometry(){
   if(!video || !video.videoWidth) return;
@@ -1641,6 +1796,7 @@ function syncMobileUI(){
  recordMobile.classList.toggle("recordActive",recording); recordMobile.disabled=startBtn.disabled; recordMobile.textContent=recording?"● ACTIVO":"● REGISTRAR";
  const dark=document.body.classList.contains("darkMode"); themeToggleMobile.textContent=dark?"☀️ Modo claro":"🌙 Modo nocturno";
  syncMobileSelections();
+ updateFPSIndicators();
 }
 function moveStageForLayout(){
  const stage=document.getElementById("stage"); if(!stage)return;
@@ -1870,7 +2026,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_2.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_3.xlsx");
 };
 </script>
 </body>
