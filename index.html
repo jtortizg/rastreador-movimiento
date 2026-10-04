@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.4</title>
+<title>Rastreador de Movimiento v10.5</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -791,6 +791,38 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
   }
 }
 
+
+/* ===== v10.5 — Más espacio para lectura de FPS en smartphone ===== */
+@media(max-width:700px){
+  /* La fila Archivo/FPS reserva más ancho al bloque FPS. */
+  .fileRow{
+    grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr) !important;
+    gap:8px !important;
+  }
+  #fileInputMobile{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+    font-size:12px;
+  }
+  .fpsBox{
+    overflow:visible !important;
+    grid-template-columns:max-content minmax(72px,1fr) max-content !important;
+  }
+  .fpsBox input{
+    min-width:72px !important;
+    font-size:14px;
+    padding-left:6px !important;
+    padding-right:4px !important;
+  }
+  #fpsModeMobile{
+    overflow:visible !important;
+    text-overflow:clip !important;
+    max-width:none !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -853,7 +885,7 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.4</h2>
+<h2>Rastreador de Movimiento v10.5</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -2067,7 +2099,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_4.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_5.xlsx");
 };
 </script>
 </body>
