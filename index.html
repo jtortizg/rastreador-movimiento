@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.5</title>
+<title>Rastreador de Movimiento v10.6</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -823,14 +823,70 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
   }
 }
 
+
+/* ===== v10.6 — Archivo y FPS en filas independientes ===== */
+@media(max-width:700px){
+  .mobileFileRow{
+    display:block !important;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .mobileFileRow #fileInputMobile{
+    display:block;
+    width:100% !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+    font-size:14px;
+  }
+  .mobileFpsRow{
+    display:block !important;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .mobileFpsRow .fpsBox{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    display:grid !important;
+    grid-template-columns:max-content minmax(90px,1fr) max-content !important;
+    gap:7px;
+    align-items:center;
+    overflow:visible !important;
+  }
+  .mobileFpsRow .fpsBox input{
+    width:100% !important;
+    min-width:90px !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+    font-size:15px;
+  }
+  #fpsAutoMobile{
+    width:auto !important;
+    min-width:62px !important;
+    max-width:none !important;
+    white-space:nowrap;
+  }
+  #fpsModeMobile{
+    grid-column:2 / 4 !important;
+    justify-self:end;
+    max-width:100% !important;
+    overflow:visible !important;
+    text-overflow:clip !important;
+    white-space:nowrap;
+    margin-top:0 !important;
+  }
+}
+
 </style>
 </head>
 <body>
 
 <div id="mobileUI">
   <div class="mobileRow row1"><button id="themeToggleMobile">🌙 Modo nocturno</button></div>
-  <div class="mobileRow row2">
+  <div class="mobileRow row2 mobileFileRow">
     <input type="file" id="fileInputMobile" accept="video/*">
+  </div>
+  <div class="mobileRow mobileFpsRow">
     <div class="fpsBox"><span>FPS</span><input type="number" id="fpsMobile" value="30" min="1" step="any"><button type="button" id="fpsAutoMobile">AUTO</button><small id="fpsModeMobile">AUTO</small></div>
   </div>
   <div class="mobileRow row3">
@@ -885,7 +941,7 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.5</h2>
+<h2>Rastreador de Movimiento v10.6</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -2099,7 +2155,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_5.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_6.xlsx");
 };
 </script>
 </body>
