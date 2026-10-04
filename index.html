@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.1</title>
+<title>Rastreador de Movimiento v10.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -792,7 +792,7 @@ body.darkMode .chartPoint{stroke:#17212B}
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.1</h2>
+<h2>Rastreador de Movimiento v10.2</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -1324,10 +1324,12 @@ function clickCanvas(e){
  if(mode==="origin"){
    origin={x,y};
    mode="";
+   recording=false;
    statusEl.innerHTML="<strong>Estado:</strong> Origen definido.";
    modeIndicator.innerHTML="<strong>Modo:</strong> Ninguno";
-   setButtonStates();
    enableStart();
+   setButtonStates();
+   if(typeof syncMobileUI==="function") syncMobileUI();
    draw();
    return;
  }
@@ -1668,9 +1670,7 @@ try{
   if(savedTheme==="dark") applyTheme(true);
 }catch(e){}
 
-scaleBtnMobile.addEventListener("click",()=>scaleBtn.click());
-originBtnMobile.addEventListener("click",()=>originBtn.click());
-startBtnMobile.addEventListener("click",()=>startBtn.click());
+
 
 
 function mouseMove(e){
@@ -1870,7 +1870,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_1.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_2.xlsx");
 };
 </script>
 </body>
