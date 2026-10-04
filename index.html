@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.6</title>
+<title>Rastreador de Movimiento v10.7</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -877,6 +877,86 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
   }
 }
 
+
+/* ===== v10.7 — FPS completo en una sola fila móvil ===== */
+@media(max-width:700px){
+  .mobileFpsRow{
+    display:block !important;
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+  .mobileFpsRow .fpsBox{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    display:grid !important;
+    grid-template-columns:max-content 68px max-content max-content !important;
+    gap:5px !important;
+    align-items:center;
+    overflow:hidden !important;
+  }
+  .mobileFpsRow .fpsBox > span:first-child{
+    white-space:nowrap;
+    font-size:13px;
+  }
+  .mobileFpsRow .fpsBox input{
+    width:68px !important;
+    min-width:0 !important;
+    max-width:68px !important;
+    box-sizing:border-box;
+    font-size:14px;
+    padding:7px 3px 7px 5px !important;
+  }
+  #fpsAutoMobile{
+    width:auto !important;
+    min-width:52px !important;
+    max-width:58px !important;
+    padding-left:6px !important;
+    padding-right:6px !important;
+    white-space:nowrap;
+    font-size:12px;
+  }
+  #fpsModeMobile{
+    grid-column:auto !important;
+    justify-self:stretch !important;
+    width:auto;
+    max-width:76px !important;
+    box-sizing:border-box;
+    overflow:hidden !important;
+    text-overflow:clip !important;
+    white-space:nowrap;
+    margin:0 !important;
+    padding:5px 6px !important;
+    text-align:center;
+    font-size:10px !important;
+  }
+}
+@media(max-width:370px){
+  .mobileFpsRow .fpsBox{
+    grid-template-columns:max-content 62px max-content minmax(0,1fr) !important;
+    gap:4px !important;
+  }
+  .mobileFpsRow .fpsBox input{
+    width:62px !important;
+    max-width:62px !important;
+    font-size:13px;
+  }
+  #fpsAutoMobile{
+    min-width:48px !important;
+    max-width:52px !important;
+    padding-left:4px !important;
+    padding-right:4px !important;
+  }
+  #fpsModeMobile{
+    max-width:68px !important;
+    padding-left:3px !important;
+    padding-right:3px !important;
+    font-size:9px !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -941,7 +1021,7 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.6</h2>
+<h2>Rastreador de Movimiento v10.7</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -1213,7 +1293,7 @@ function getFPS(){
 function updateFPSIndicators(){
   const label=fpsMode==="auto" ? (detectedFPS ? `AUTO · ${formatFPS(detectedFPS)} FPS` : "AUTO") : "MANUAL";
   fpsModeLabel.textContent=label;
-  fpsModeMobile.textContent=label;
+  fpsModeMobile.textContent=fpsMode==="auto" ? "AUTO" : "MANUAL";
   fpsAutoBtn.classList.toggle("fpsAutoActive",fpsMode==="auto");
   fpsAutoMobile.classList.toggle("fpsAutoActive",fpsMode==="auto");
 }
@@ -2155,7 +2235,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_6.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_7.xlsx");
 };
 </script>
 </body>
