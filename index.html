@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.3</title>
+<title>Rastreador de Movimiento v10.4</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -750,6 +750,47 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
  #fpsModeMobile{grid-column:2/4;justify-self:end;margin-top:-2px}
 }
 
+
+/* ===== v10.4 — Ajuste responsive del bloque FPS ===== */
+@media(max-width:700px){
+  .fpsBox{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    display:grid !important;
+    grid-template-columns:max-content minmax(0,1fr) max-content !important;
+    gap:5px;
+    align-items:center;
+    overflow:hidden;
+  }
+  .fpsBox > span:first-child{white-space:nowrap}
+  .fpsBox input{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+  }
+  #fpsAutoMobile{
+    width:auto !important;
+    min-width:52px !important;
+    max-width:64px;
+    padding-left:7px !important;
+    padding-right:7px !important;
+    box-sizing:border-box;
+    white-space:nowrap;
+  }
+  #fpsModeMobile{
+    grid-column:2 / 4 !important;
+    justify-self:end;
+    max-width:100%;
+    box-sizing:border-box;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    margin-top:0 !important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -812,7 +853,7 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.3</h2>
+<h2>Rastreador de Movimiento v10.4</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -2026,7 +2067,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_3.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_4.xlsx");
 };
 </script>
 </body>
