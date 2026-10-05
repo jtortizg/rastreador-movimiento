@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.8</title>
+<title>Rastreador de Movimiento v10.7</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -957,41 +957,6 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
   }
 }
 
-
-/* ===== v10.8 — Compatibilidad táctil con tablets Android/iPad ===== */
-@media (pointer:coarse) and (max-width:1180px){
-  #desktopUI{display:none !important}
-  #mobileUI{display:block !important}
-  body{overflow-x:hidden}
-  #mobileUI{width:100%;max-width:100%;box-sizing:border-box}
-  .mobileRow{width:100%;max-width:100%;box-sizing:border-box}
-  #mobileVideoHost{width:100%;max-width:100%;box-sizing:border-box;overflow:visible}
-  #zoomViewport{
-    width:100%;max-width:100%;box-sizing:border-box;
-    overflow:auto !important;-webkit-overflow-scrolling:touch;
-    touch-action:pan-x pan-y;
-  }
-  #displayCanvas{
-    touch-action:none;
-    -webkit-user-select:none;
-    user-select:none;
-    -webkit-touch-callout:none;
-  }
-  button,input,label{touch-action:manipulation}
-  button{min-height:42px}
-  .mobileFileRow{display:block !important;width:100%}
-  .mobileFileRow #fileInputMobile{width:100% !important;max-width:100% !important;box-sizing:border-box}
-  .mobileFpsRow{display:block !important;width:100%;overflow:hidden}
-  .mobileFpsRow .fpsBox{
-    width:100%;display:grid !important;
-    grid-template-columns:max-content 76px max-content max-content !important;
-    gap:7px;align-items:center;box-sizing:border-box;
-  }
-  .mobileFpsRow .fpsBox input{width:76px !important;min-width:0 !important;box-sizing:border-box}
-  #fpsModeMobile{grid-column:auto !important;margin:0 !important}
-  .chartsContainer{grid-template-columns:1fr}
-}
-
 </style>
 </head>
 <body>
@@ -1056,7 +1021,7 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.8</h2>
+<h2>Rastreador de Movimiento v10.7</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -1688,45 +1653,13 @@ originBtn.onclick=()=>{
     draw();
 };
 
-let lastCanvasPointerUp=0;
-canvas.addEventListener("pointerup",e=>{
-  if(e.pointerType==="touch" || e.pointerType==="pen"){
-    // Un toque breve selecciona/registra; un gesto de paneo/pinch no debe crear un punto.
-    if(canvasPointerMoved) return;
-    lastCanvasPointerUp=Date.now();
-    clickCanvas(e);
-  }
-});
-canvas.addEventListener("click",e=>{
-  // Evita el click sintético posterior a un toque.
-  if(Date.now()-lastCanvasPointerUp<700) return;
-  clickCanvas(e);
-});
+canvas.addEventListener("click",clickCanvas);
 canvas.addEventListener("mousemove",mouseMove);
-
-let canvasPointerStart=null;
-let canvasPointerMoved=false;
-canvas.addEventListener("pointerdown",e=>{
-  if(e.pointerType==="touch" || e.pointerType==="pen"){
-    canvasPointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};
-    canvasPointerMoved=false;
-  }
-});
-canvas.addEventListener("pointermove",e=>{
-  if(canvasPointerStart && e.pointerId===canvasPointerStart.id){
-    if(Math.hypot(e.clientX-canvasPointerStart.x,e.clientY-canvasPointerStart.y)>8){
-      canvasPointerMoved=true;
-    }
-  }
-});
-canvas.addEventListener("pointercancel",()=>{canvasPointerStart=null;canvasPointerMoved=false;});
-canvas.addEventListener("pointerup",()=>{setTimeout(()=>{canvasPointerStart=null;canvasPointerMoved=false;},0);});
 
 function canvasDisplayPoint(e){
  const r=canvas.getBoundingClientRect();
- const source=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;
- const x=(source.clientX-r.left)/r.width*canvas.width;
- const y=(source.clientY-r.top)/r.height*canvas.height;
+ const x=(e.clientX-r.left)/r.width*canvas.width;
+ const y=(e.clientY-r.top)/r.height*canvas.height;
  return {x,y};
 }
 
@@ -2053,13 +1986,7 @@ function placeSharedPopup(){
     document.body.appendChild(scalePopup);
   }
 }
-function isTouchDevice(){
-  return (navigator.maxTouchPoints||0)>0 || window.matchMedia("(pointer:coarse)").matches;
-}
-function isMobileLayout(){
-  return window.matchMedia("(max-width:700px)").matches ||
-         (isTouchDevice() && window.matchMedia("(max-width:1180px)").matches);
-}
+function isMobileLayout(){return window.matchMedia("(max-width:700px)").matches;}
 function syncDesktopSelectionsFromMobile(){
  collectTime.checked=collectTimeMobile.checked; collectTime2.checked=collectTime2Mobile.checked; collectPixelX.checked=collectPixelXMobile.checked;
  collectPixelY.checked=collectPixelYMobile.checked; collectRealX.checked=collectRealXMobile.checked; collectRealY.checked=collectRealYMobile.checked;
@@ -2308,7 +2235,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_8.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_7.xlsx");
 };
 </script>
 </body>
