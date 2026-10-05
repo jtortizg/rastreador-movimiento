@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rastreador de Movimiento v10.7</title>
+<title>Rastreador de Movimiento v10.10</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#1b1f24;color:#eee;padding:20px}
@@ -957,6 +957,23 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
   }
 }
 
+
+/* ===== v10.10 — v10.7 estable + reproducción bidireccional ===== */
+.directionPlay{font-weight:800}
+@media(max-width:700px){
+  .mobileRow.row4{
+    display:grid !important;
+    grid-template-columns:52px minmax(50px,1fr) minmax(50px,1fr) 52px !important;
+    gap:6px !important;
+    align-items:center;
+  }
+  #prevFrameMobile,#nextFrameMobile{width:52px !important;min-width:52px !important}
+  #reversePlayMobile,#forwardPlayMobile{
+    width:100% !important;min-width:0 !important;min-height:48px;
+    font-size:21px;font-weight:800;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -975,7 +992,8 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
   </div>
   <div class="mobileRow row4">
     <button id="prevFrameMobile" aria-label="Retroceder un frame">−1</button>
-    <button id="playPauseMobile" aria-label="Reproducir video" aria-pressed="false">▶ PLAY</button>
+    <button id="reversePlayMobile" class="directionPlay" aria-label="Reproducir hacia atrás" aria-pressed="false">◀</button>
+    <button id="forwardPlayMobile" class="directionPlay" aria-label="Reproducir hacia adelante" aria-pressed="false">▶</button>
     <button id="nextFrameMobile" aria-label="Avanzar un frame">+1</button>
   </div>
   <div class="mobileRow row5">
@@ -1021,7 +1039,7 @@ body.darkMode .fpsModeLabel,body.darkMode #fpsModeMobile{background:#314252;colo
 </div>
 
 <div id="desktopUI">
-<h2>Rastreador de Movimiento v10.7</h2>
+<h2>Rastreador de Movimiento v10.10</h2>
 
 <div class="panel">
 <input type="file" id="fileInput" accept="video/*">
@@ -1038,7 +1056,8 @@ FPS <input type="number" id="fps" value="30" min="1" step="any"> <button type="b
 <div class="panel">
   <div class="videoControls playbackControls">
     <button type="button" id="prevFrame" class="frameBtn compactFrame" aria-label="Retroceder un frame">−1</button>
-    <button type="button" id="playPauseBtn" class="playPauseBtn" aria-label="Reproducir video" aria-pressed="false">▶ PLAY</button>
+    <button type="button" id="reversePlayBtn" class="playPauseBtn directionPlay" aria-label="Reproducir hacia atrás" aria-pressed="false">◀ ATRÁS</button>
+    <button type="button" id="forwardPlayBtn" class="playPauseBtn directionPlay" aria-label="Reproducir hacia adelante" aria-pressed="false">▶ ADELANTE</button>
     <button type="button" id="nextFrame" class="frameBtn compactFrame" aria-label="Avanzar un frame">+1</button>
     <span id="frameLabel">Frame 0</span>
     <input type="range" id="seekRange" min="0" max="0" step="1" value="0" aria-label="Buscar frame">
@@ -1160,7 +1179,8 @@ const resetMobile=document.getElementById("resetMobile");
 const gridMobile=document.getElementById("gridMobile");
 const prevFrameMobile=document.getElementById("prevFrameMobile");
 const nextFrameMobile=document.getElementById("nextFrameMobile");
-const playPauseMobile=document.getElementById("playPauseMobile");
+const reversePlayMobile=document.getElementById("reversePlayMobile");
+const forwardPlayMobile=document.getElementById("forwardPlayMobile");
 const seekRangeMobile=document.getElementById("seekRangeMobile");
 const frameLabelMobile=document.getElementById("frameLabelMobile");
 const mobileVideoHost=document.getElementById("mobileVideoHost");
@@ -1190,7 +1210,8 @@ const zoomIn=document.getElementById("zoomIn");
 const zoomReset=document.getElementById("zoomReset");
 const prevFrame=document.getElementById("prevFrame");
 const nextFrame=document.getElementById("nextFrame");
-const playPauseBtn=document.getElementById("playPauseBtn");
+const reversePlayBtn=document.getElementById("reversePlayBtn");
+const forwardPlayBtn=document.getElementById("forwardPlayBtn");
 const seekRange=document.getElementById("seekRange");
 const frameLabel=document.getElementById("frameLabel");
 const rotateBtn=document.getElementById("rotateBtn");
@@ -1504,6 +1525,7 @@ rotateBtn.addEventListener("click",()=>{
 });
 
 function seekToFrame(target){
+  if(typeof reversePlaybackActive!=="undefined" && reversePlaybackActive) stopReversePlayback();
   if(!video) return;
   fps=getFPS();
   const maxFrame=Math.max(0,totalFrames-1);
@@ -1516,22 +1538,60 @@ function seekToFrame(target){
   else draw();
 }
 
+let reversePlaybackActive=false;
+let reversePlaybackRAF=null;
+let reverseLastTS=null;
+
 function syncPlaybackButtons(){
-  if(!video) {
-    playPauseBtn.textContent="▶ PLAY";
-    playPauseMobile.textContent="▶ PLAY";
+  const forwardActive=!!video && !video.paused && !video.ended && !reversePlaybackActive;
+  const reverseActive=reversePlaybackActive;
+  if(forwardPlayBtn){
+    forwardPlayBtn.textContent=forwardActive ? "⏸ PAUSA" : "▶ ADELANTE";
+    forwardPlayBtn.setAttribute("aria-pressed",forwardActive?"true":"false");
+  }
+  if(reversePlayBtn){
+    reversePlayBtn.textContent=reverseActive ? "⏸ PAUSA" : "◀ ATRÁS";
+    reversePlayBtn.setAttribute("aria-pressed",reverseActive?"true":"false");
+  }
+  if(forwardPlayMobile){
+    forwardPlayMobile.textContent=forwardActive ? "⏸" : "▶";
+    forwardPlayMobile.setAttribute("aria-pressed",forwardActive?"true":"false");
+  }
+  if(reversePlayMobile){
+    reversePlayMobile.textContent=reverseActive ? "⏸" : "◀";
+    reversePlayMobile.setAttribute("aria-pressed",reverseActive?"true":"false");
+  }
+}
+function stopReversePlayback(){
+  reversePlaybackActive=false;
+  reverseLastTS=null;
+  if(reversePlaybackRAF!==null){cancelAnimationFrame(reversePlaybackRAF);reversePlaybackRAF=null;}
+  syncPlaybackButtons();
+}
+function reversePlaybackStep(ts){
+  if(!reversePlaybackActive) return;
+  if(reverseLastTS===null) reverseLastTS=ts;
+  const dt=Math.min((ts-reverseLastTS)/1000,0.08);
+  reverseLastTS=ts;
+  if(video.currentTime<=0){
+    video.currentTime=0;
+    stopReversePlayback();
     return;
   }
-  const playing=!video.paused && !video.ended;
-  [playPauseBtn,playPauseMobile].forEach(btn=>{
-    if(!btn) return;
-    btn.textContent=playing ? "⏸ PAUSAR" : "▶ PLAY";
-    btn.setAttribute("aria-pressed",playing ? "true" : "false");
-    btn.setAttribute("aria-label",playing ? "Pausar video" : "Reproducir video");
-  });
+  video.currentTime=Math.max(0,video.currentTime-dt);
+  reversePlaybackRAF=requestAnimationFrame(reversePlaybackStep);
 }
-
-async function togglePlayback(){
+function toggleReversePlayback(){
+  if(reversePlaybackActive){stopReversePlayback();return;}
+  if(!video || !video.src) return;
+  video.pause();
+  reversePlaybackActive=true;
+  reverseLastTS=null;
+  syncPlaybackButtons();
+  reversePlaybackRAF=requestAnimationFrame(reversePlaybackStep);
+}
+async function toggleForwardPlayback(){
+  if(reversePlaybackActive) stopReversePlayback();
   if(!video) return;
   if(video.paused || video.ended){
     try{ await video.play(); }catch(err){ console.warn("No se pudo reproducir el video:",err); }
@@ -1541,8 +1601,10 @@ async function togglePlayback(){
   syncPlaybackButtons();
 }
 
-playPauseBtn.addEventListener("click",togglePlayback);
-playPauseMobile.addEventListener("click",togglePlayback);
+reversePlayBtn.addEventListener("click",toggleReversePlayback);
+forwardPlayBtn.addEventListener("click",toggleForwardPlayback);
+reversePlayMobile.addEventListener("click",toggleReversePlayback);
+forwardPlayMobile.addEventListener("click",toggleForwardPlayback);
 
 prevFrame.addEventListener("click",()=>seekToFrame(currentFrame-1));
 nextFrame.addEventListener("click",()=>seekToFrame(currentFrame+1));
@@ -2048,6 +2110,7 @@ function renderTable(){}
 
 
 function resetAll(){
+ if(typeof stopReversePlayback==="function") stopReversePlayback();
   recording=false;
   mode="";
   scalePts=[];
@@ -2235,7 +2298,7 @@ exportBtn.onclick=()=>{
   const ws=XLSX.utils.aoa_to_sheet(rows);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Datos");
-  XLSX.writeFile(wb,"datos_movimiento_v10_7.xlsx");
+  XLSX.writeFile(wb,"datos_movimiento_v10_10.xlsx");
 };
 </script>
 </body>
